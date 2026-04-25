@@ -378,8 +378,10 @@ public class MainActivity extends PermissionsActivity
     initialisePreferences();
     initializeInteractiveShell();
 
-    // Increment before clearing / registering so that isFirstInstance is decided atomically
-    // against concurrent onCreate calls from MainActivityNewWindow launches.
+    // Increment before clearing so that isFirstInstance is decided atomically against
+    // concurrent onCreate calls from MainActivityNewWindow launches. The DataChangeListener
+    // itself is registered after initialiseViews() below so it can hold a non-null drawer
+    // reference (drawer is only assigned inside initialiseViews()).
     boolean isFirstInstance = LIVE_MAIN_ACTIVITY_COUNT.getAndIncrement() == 0;
     if (isFirstInstance) {
       // Only the first panel resets DataUtils; subsequent panels inherit the populated singleton.
@@ -388,8 +390,6 @@ public class MainActivity extends PermissionsActivity
       // panel before the async reload below had a chance to repopulate them.
       dataUtils.clear();
     }
-    dataChangeListenerInstance = new SaveOnDataUtilsChange(drawer);
-    dataUtils.registerOnDataChangedListener(dataChangeListenerInstance);
 
     // setMainActivityContext(this) is also called from onResume() below so that
     // whichever MainActivity (or MainActivityNewWindow) is foregrounded owns the
@@ -399,6 +399,12 @@ public class MainActivity extends PermissionsActivity
     AppConfig.getInstance().setMainActivityContext(this);
 
     initialiseViews();
+
+    // Register the drawer listener *after* initialiseViews() so SaveOnDataUtilsChange holds a
+    // live (non-null) WeakReference to the drawer. Before initialiseViews() the drawer field
+    // is still null, which would leave onBookAdded et al unable to trigger a drawer refresh.
+    dataChangeListenerInstance = new SaveOnDataUtilsChange(drawer);
+    dataUtils.registerOnDataChangedListener(dataChangeListenerInstance);
     utilsHandler = AppConfig.getInstance().getUtilsHandler();
     cloudHandler = new CloudHandler(this, AppConfig.getInstance().getExplorerDatabase());
 
