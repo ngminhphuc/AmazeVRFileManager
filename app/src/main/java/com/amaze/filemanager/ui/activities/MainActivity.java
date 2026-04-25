@@ -1200,6 +1200,15 @@ public class MainActivity extends PermissionsActivity
     // If they have handled the options, we don't need to.
     if (getFragmentAtFrame().onOptionsItemSelected(item)) return true;
 
+    // Handle fragment-independent actions before the executeWithMainFragment
+    // block so they still fire on CompressedExplorerFragment / AppsListFragment /
+    // ProcessViewerFragment / FtpServerFragment, where getCurrentMainFragment()
+    // returns null and the lambda is silently skipped.
+    if (item.getItemId() == R.id.new_window) {
+      launchNewWindow();
+      return true;
+    }
+
     // Handle action buttons
     executeWithMainFragment(
         mainFragment -> {
@@ -1232,8 +1241,6 @@ public class MainActivity extends PermissionsActivity
             dialog.show();
           } else if (item.getItemId() == R.id.exit) {
             finish();
-          } else if (item.getItemId() == R.id.new_window) {
-            launchNewWindow();
           } else if (item.getItemId() == R.id.sortby) {
             GeneralDialogCreation.showSortDialog(mainFragment, getAppTheme(), getPrefs());
           } else if (item.getItemId() == R.id.dsort) {
@@ -1338,17 +1345,22 @@ public class MainActivity extends PermissionsActivity
   }
 
   /**
-   * Launch a fresh MainActivity instance in a new task so the user ends up with two independent
-   * Amaze panels on Meta Quest 3 (or split-screen on phone / tablet).
+   * Launch an additional Amaze panel in a new task so the user ends up with two independent
+   * browsers on Meta Quest 3 (or split-screen on phone / tablet).
    *
-   * <p>Requires the activity to be declared with {@code launchMode="singleInstancePerTask"} (see
-   * AndroidManifest) so the system treats this call as a new top-level task rather than routing
-   * back to the existing instance. Uses {@code FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_MULTIPLE_TASK
-   * | FLAG_ACTIVITY_NEW_DOCUMENT} to force task creation even when the launcher has pinned an
-   * existing task.
+   * <p>We intentionally route this through a dedicated {@link MainActivityNewWindow} subclass
+   * rather than re-launching {@link MainActivity} itself. {@code MainActivity} keeps its original
+   * {@code launchMode="singleInstance"}, preserving intent routing and back-stack behaviour for
+   * every existing code path (launcher icon, file-open intents from other apps, SEND share targets,
+   * etc.). The sibling activity uses {@code launchMode="singleInstancePerTask"} (API 31+, which
+   * covers Quest 3 and modern Android) so each invocation spawns a distinct task with its own
+   * recent-apps card. On older devices the system silently falls back to {@code standard}, which
+   * combined with the explicit task flags below still yields a fresh task per invocation — the only
+   * degradation is the loss of the "one instance per task" guarantee, which is acceptable because
+   * multi-window on pre-API-31 phones is a niche use case anyway.
    */
   private void launchNewWindow() {
-    Intent intent = new Intent(this, MainActivity.class);
+    Intent intent = new Intent(this, MainActivityNewWindow.class);
     intent.setFlags(
         Intent.FLAG_ACTIVITY_NEW_TASK
             | Intent.FLAG_ACTIVITY_MULTIPLE_TASK

@@ -85,16 +85,17 @@
             android:name="com.oculus.intent.category.2D"
             android:value="true" />
 
-        <!-- launchMode=singleInstancePerTask (API 31+, which covers Quest 3 / Horizon OS
-             and all modern Android phones) lets the user open multiple independent panels
-             of Amaze on Quest 3 for side-by-side browsing. On pre-31 devices Android
-             silently falls back to the default standard launch mode which still works
-             for single-instance usage. Combined with resizeableActivity + allowEmbedded
-             so each panel can be freely resized / positioned inside the VR shell. -->
+        <!-- MainActivity keeps its original launchMode="singleInstance" so existing intent
+             filters (file open, SEND targets, launcher pinning) behave exactly as before.
+             resizeableActivity + allowEmbedded let the single panel be resized inside the
+             Horizon OS VR shell or Android split-screen. Multi-window is routed through
+             a dedicated MainActivityNewWindow sibling activity instead (see below) — this
+             preserves pre-API-31 behaviour, since singleInstancePerTask silently falls
+             back to standard on older devices. -->
         <activity
             android:exported="true"
             android:label="@string/appbar_name"
-            android:launchMode="singleInstancePerTask"
+            android:launchMode="singleInstance"
             android:name=".ui.activities.MainActivity"
             android:theme="@style/appCompatBlack"
             android:configChanges="uiMode"
@@ -102,8 +103,6 @@
             android:windowSoftInputMode="adjustPan"
             android:resizeableActivity="true"
             android:allowEmbedded="true"
-            android:documentLaunchMode="intoExisting"
-            tools:targetApi="31"
            >
 
             <intent-filter android:label="@string/appbar_name">
@@ -171,6 +170,30 @@
             <meta-data android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
         </activity>
+
+        <!-- Sibling of MainActivity used exclusively as the target of the "New window"
+             menu action. Declared with launchMode="singleInstancePerTask" (API 31+, which
+             covers Quest 3 and modern Android phones) so each launch produces a distinct
+             task with its own recent-apps card / Horizon OS panel. documentLaunchMode=
+             "always" additionally forces task creation on pre-31 devices where the launch
+             mode attribute silently falls back to "standard". This keeps MainActivity's
+             own launchMode (singleInstance) untouched so existing intent routing, the
+             launcher icon pinning, SEND targets, and file-open intents behave exactly
+             as before. -->
+        <activity
+            android:exported="false"
+            android:label="@string/appbar_name"
+            android:launchMode="singleInstancePerTask"
+            android:name=".ui.activities.MainActivityNewWindow"
+            android:theme="@style/appCompatBlack"
+            android:configChanges="uiMode"
+            android:screenOrientation="sensorLandscape"
+            android:windowSoftInputMode="adjustPan"
+            android:resizeableActivity="true"
+            android:allowEmbedded="true"
+            android:documentLaunchMode="always"
+            android:taskAffinity=""
+            tools:targetApi="31" />
 
         <activity
             android:exported="true"
