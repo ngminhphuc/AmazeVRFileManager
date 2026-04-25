@@ -196,10 +196,8 @@ public class TabFragment extends Fragment {
   @Override
   public void onDestroyView() {
     indicator = null; // Free the strong reference
-    MainActivity mainActivity = (MainActivity) getActivity();
-    if (mainActivity != null) {
-      sharedPrefs.edit().putInt(PREFERENCE_CURRENT_TAB, mainActivity.getActiveTabIndex()).apply();
-    }
+    // PREFERENCE_CURRENT_TAB is persisted inside MainActivity.setActiveTabIndex() on every tab
+    // change, so no additional write is needed here.
     super.onDestroyView();
   }
 
@@ -240,11 +238,8 @@ public class TabFragment extends Fragment {
   @Override
   public void onSaveInstanceState(@NonNull Bundle outState) {
     super.onSaveInstanceState(outState);
-
-    MainActivity mainActivity = (MainActivity) getActivity();
-    if (sharedPrefs != null && mainActivity != null) {
-      sharedPrefs.edit().putInt(PREFERENCE_CURRENT_TAB, mainActivity.getActiveTabIndex()).apply();
-    }
+    // PREFERENCE_CURRENT_TAB is persisted inside MainActivity.setActiveTabIndex() on every tab
+    // change, so no additional write is needed here.
 
     if (fragments.size() != 0) {
       if (fragmentManager == null) {
@@ -309,11 +304,9 @@ public class TabFragment extends Fragment {
           .setInterpolator(new DecelerateInterpolator(2))
           .start();
 
+      // setActiveTabIndex persists PREFERENCE_CURRENT_TAB internally, so no explicit
+      // sharedPrefs write is needed here.
       requireMainActivity().setActiveTabIndex(p1);
-
-      if (sharedPrefs != null) {
-        sharedPrefs.edit().putInt(PREFERENCE_CURRENT_TAB, p1).apply();
-      }
 
       Fragment fragment = fragments.get(p1);
       if (fragment instanceof MainFragment) {

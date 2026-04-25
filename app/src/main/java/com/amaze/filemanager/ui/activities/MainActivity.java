@@ -1902,8 +1902,8 @@ public class MainActivity extends PermissionsActivity
 
   /**
    * Call this method when you need to update the MainActivity view components' colors based on
-   * update in the {@link MainActivity#activeTabIndex} Warning - All the variables should be initialised
-   * before calling this method!
+   * update in the {@link MainActivity#activeTabIndex} Warning - All the variables should be
+   * initialised before calling this method!
    */
   public void updateViews(ColorDrawable colorDrawable) {
     // appbar view color
