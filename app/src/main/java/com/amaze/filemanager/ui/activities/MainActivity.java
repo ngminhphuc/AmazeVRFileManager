@@ -364,6 +364,11 @@ public class MainActivity extends PermissionsActivity
 
     dataUtils.registerOnDataChangedListener(new SaveOnDataUtilsChange(drawer));
 
+    // setMainActivityContext(this) is also called from onResume() below so that
+    // whichever MainActivity (or MainActivityNewWindow) is foregrounded owns the
+    // AppConfig singleton reference. Calling it here ensures the reference is
+    // valid during the rest of onCreate's initialisation pipeline, before any
+    // onResume dispatch.
     AppConfig.getInstance().setMainActivityContext(this);
 
     initialiseViews();
@@ -1412,6 +1417,11 @@ public class MainActivity extends PermissionsActivity
   @Override
   public void onResume() {
     super.onResume();
+    // Re-claim AppConfig's singleton reference on every resume so that after
+    // a secondary MainActivityNewWindow panel is closed (which would otherwise
+    // leave the singleton pointing at a destroyed activity) the foregrounded
+    // instance becomes the active context again.
+    AppConfig.getInstance().setMainActivityContext(this);
     if (materialDialog != null && !materialDialog.isShowing()) {
       materialDialog.show();
       materialDialog = null;
