@@ -32,6 +32,7 @@ import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -79,6 +80,16 @@ class VrVideoPlayerActivity : AppCompatActivity() {
         flatPlayerView = findViewById(R.id.vr_player_view_flat)
         sphericalPlayerView = findViewById(R.id.vr_player_view_spherical)
         loading = findViewById(R.id.vr_player_loading)
+
+        // The activity's theme extends Theme.AppCompat.NoActionBar, so we host
+        // our own Toolbar overlaid on the video in order to reach the options
+        // menu (projection switcher) and the back / up button.
+        val toolbar: Toolbar = findViewById(R.id.vr_player_toolbar)
+        setSupportActionBar(toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.setDisplayShowHomeEnabled(true)
+        supportActionBar?.setTitle(R.string.vr_video_player)
+
         applyImmersiveMode()
 
         val uri: Uri? = intent?.data
@@ -110,6 +121,10 @@ class VrVideoPlayerActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == android.R.id.home) {
+            finish()
+            return true
+        }
         val newProjection =
             when (item.itemId) {
                 R.id.vr_projection_flat -> Projection.FLAT
