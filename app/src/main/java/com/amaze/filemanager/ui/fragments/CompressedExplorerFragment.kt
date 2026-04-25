@@ -526,7 +526,7 @@ class CompressedExplorerFragment : Fragment(), BottomBarButtonPath {
                 @ColorInt val primaryColor =
                     ColorPreferenceHelper.getPrimary(
                         requireMainActivity().currentColorPreference,
-                        MainActivity.currentTab,
+                        requireMainActivity().activeTabIndex,
                     )
                 selection = false
                 requireMainActivity().updateViews(ColorDrawable(primaryColor))

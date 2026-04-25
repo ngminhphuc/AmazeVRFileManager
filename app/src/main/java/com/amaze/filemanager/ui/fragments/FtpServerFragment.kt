@@ -783,7 +783,7 @@ class FtpServerFragment : Fragment(R.layout.fragment_ftp) {
         val skinColor = mainActivity.currentColorPreference.primaryFirstTab
         val skinTwoColor = mainActivity.currentColorPreference.primarySecondTab
         mainActivity.updateViews(
-            if (MainActivity.currentTab == 1) skinTwoColor.toDrawable() else skinColor.toDrawable(),
+            if (mainActivity.activeTabIndex == 1) skinTwoColor.toDrawable() else skinColor.toDrawable(),
         )
 
         ftpBtn.setOnKeyListener(

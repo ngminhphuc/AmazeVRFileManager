@@ -65,6 +65,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
@@ -226,6 +227,21 @@ public class MainActivity extends PermissionsActivity
 
   private static final Logger LOG = LoggerFactory.getLogger(MainActivity.class);
 
+  /**
+   * Process-wide count of live MainActivity (and MainActivityNewWindow) instances. Incremented in
+   * onCreate, decremented in onDestroy. Guards the release of process-scoped singletons — the libsu
+   * interactive root shell and NetCopyClientConnectionPool — so that closing a secondary "New
+   * window" panel does not tear down resources still needed by the surviving primary panel.
+   */
+  private static final AtomicInteger LIVE_MAIN_ACTIVITY_COUNT = new AtomicInteger(0);
+
+  /**
+   * Per-instance DataUtils drawer listener. Held as a field so we can cleanly unregister it in
+   * {@link #onDestroy()} — important now that multiple MainActivity / MainActivityNewWindow panels
+   * can share the DataUtils singleton and each registers its own listener.
+   */
+  private SaveOnDataUtilsChange dataChangeListenerInstance;
+
   public static final Pattern DIR_SEPARATOR = Pattern.compile("/");
   public static final String TAG_ASYNC_HELPER = "async_helper";
 
@@ -325,8 +341,15 @@ public class MainActivity extends PermissionsActivity
   public static final String CLOUD_AUTHENTICATOR_GDRIVE = "android.intent.category.BROWSABLE";
   public static final String CLOUD_AUTHENTICATOR_REDIRECT_URI = "com.amaze.filemanager:/auth";
 
-  // the current visible tab, either 0 or 1
-  public static int currentTab;
+  /**
+   * Index of the currently visible tab in this panel's TabFragment (either 0 or 1). Per-instance
+   * rather than static so that opening a second panel via MainActivityNewWindow on Meta Quest 3 /
+   * Android split-screen doesn't overwrite the primary panel's tab selection (which was causing
+   * cross-window theme / color corruption before). Use {@link #getActiveTabIndex()} and {@link
+   * #setActiveTabIndex(int)} to read / write.
+   */
+  private int activeTabIndex;
+
   private boolean listItemSelected = false;
 
   private String scrollToFileName = null;
@@ -362,11 +385,33 @@ public class MainActivity extends PermissionsActivity
     initialisePreferences();
     initializeInteractiveShell();
 
-    dataUtils.registerOnDataChangedListener(new SaveOnDataUtilsChange(drawer));
+    // Increment before clearing so that isFirstInstance is decided atomically against
+    // concurrent onCreate calls from MainActivityNewWindow launches. The DataChangeListener
+    // itself is registered after initialiseViews() below so it can hold a non-null drawer
+    // reference (drawer is only assigned inside initialiseViews()).
+    boolean isFirstInstance = LIVE_MAIN_ACTIVITY_COUNT.getAndIncrement() == 0;
+    if (isFirstInstance) {
+      // Only the first panel resets DataUtils; subsequent panels inherit the populated singleton.
+      // If we cleared here every time, opening "New window" would wipe bookmarks, hidden files,
+      // history, server definitions, and cloud accounts out from under the still-live primary
+      // panel before the async reload below had a chance to repopulate them.
+      dataUtils.clear();
+    }
 
+    // setMainActivityContext(this) is also called from onResume() below so that
+    // whichever MainActivity (or MainActivityNewWindow) is foregrounded owns the
+    // AppConfig singleton reference. Calling it here ensures the reference is
+    // valid during the rest of onCreate's initialisation pipeline, before any
+    // onResume dispatch.
     AppConfig.getInstance().setMainActivityContext(this);
 
     initialiseViews();
+
+    // Register the drawer listener *after* initialiseViews() so SaveOnDataUtilsChange holds a
+    // live (non-null) WeakReference to the drawer. Before initialiseViews() the drawer field
+    // is still null, which would leave onBookAdded et al unable to trigger a drawer refresh.
+    dataChangeListenerInstance = new SaveOnDataUtilsChange(drawer);
+    dataUtils.registerOnDataChangedListener(dataChangeListenerInstance);
     utilsHandler = AppConfig.getInstance().getUtilsHandler();
     cloudHandler = new CloudHandler(this, AppConfig.getInstance().getExplorerDatabase());
 
@@ -1014,11 +1059,11 @@ public class MainActivity extends PermissionsActivity
 
   public void exit() {
     if (backPressedToExitOnce) {
-      NetCopyClientConnectionPool.INSTANCE.shutdown();
+      // Just finish() — the process-wide NetCopyClientConnectionPool and libsu
+      // root shell are torn down inside onDestroy() under the LIVE_MAIN_ACTIVITY_COUNT
+      // guard, which ensures they are not killed while a sibling MainActivity /
+      // MainActivityNewWindow panel is still alive.
       finish();
-      if (isRootExplorer()) {
-        closeInteractiveShell();
-      }
     } else {
       this.backPressedToExitOnce = true;
       final Toast toast = Toast.makeText(this, getString(R.string.press_again), Toast.LENGTH_SHORT);
@@ -1200,6 +1245,15 @@ public class MainActivity extends PermissionsActivity
     // If they have handled the options, we don't need to.
     if (getFragmentAtFrame().onOptionsItemSelected(item)) return true;
 
+    // Handle fragment-independent actions before the executeWithMainFragment
+    // block so they still fire on CompressedExplorerFragment / AppsListFragment /
+    // ProcessViewerFragment / FtpServerFragment, where getCurrentMainFragment()
+    // returns null and the lambda is silently skipped.
+    if (item.getItemId() == R.id.new_window) {
+      launchNewWindow();
+      return true;
+    }
+
     // Handle action buttons
     executeWithMainFragment(
         mainFragment -> {
@@ -1335,6 +1389,30 @@ public class MainActivity extends PermissionsActivity
     drawer.syncState();
   }
 
+  /**
+   * Launch an additional Amaze panel in a new task so the user ends up with two independent
+   * browsers on Meta Quest 3 (or split-screen on phone / tablet).
+   *
+   * <p>We intentionally route this through a dedicated {@link MainActivityNewWindow} subclass
+   * rather than re-launching {@link MainActivity} itself. {@code MainActivity} keeps its original
+   * {@code launchMode="singleInstance"}, preserving intent routing and back-stack behaviour for
+   * every existing code path (launcher icon, file-open intents from other apps, SEND share targets,
+   * etc.). The sibling activity uses {@code launchMode="singleInstancePerTask"} (API 31+, which
+   * covers Quest 3 and modern Android) so each invocation spawns a distinct task with its own
+   * recent-apps card. On older devices the system silently falls back to {@code standard}, which
+   * combined with the explicit task flags below still yields a fresh task per invocation — the only
+   * degradation is the loss of the "one instance per task" guarantee, which is acceptable because
+   * multi-window on pre-API-31 phones is a niche use case anyway.
+   */
+  private void launchNewWindow() {
+    Intent intent = new Intent(this, MainActivityNewWindow.class);
+    intent.setFlags(
+        Intent.FLAG_ACTIVITY_NEW_TASK
+            | Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+            | Intent.FLAG_ACTIVITY_NEW_DOCUMENT);
+    startActivity(intent);
+  }
+
   @Override
   public void onConfigurationChanged(Configuration newConfig) {
     super.onConfigurationChanged(newConfig);
@@ -1379,6 +1457,11 @@ public class MainActivity extends PermissionsActivity
   @Override
   public void onResume() {
     super.onResume();
+    // Re-claim AppConfig's singleton reference on every resume so that after
+    // a secondary MainActivityNewWindow panel is closed (which would otherwise
+    // leave the singleton pointing at a destroyed activity) the foregrounded
+    // instance becomes the active context again.
+    AppConfig.getInstance().setMainActivityContext(this);
     if (materialDialog != null && !materialDialog.isShowing()) {
       materialDialog.show();
       materialDialog = null;
@@ -1495,8 +1578,23 @@ public class MainActivity extends PermissionsActivity
     super.onDestroy();
     // TODO: 6/5/2017 Android may choose to not call this method before destruction
     // TODO: https://developer.android.com/reference/android/app/Activity.html#onDestroy%28%29
-    closeInteractiveShell();
-    NetCopyClientConnectionPool.INSTANCE.shutdown();
+
+    // Unregister this panel's drawer listener so DataUtils stops pushing change
+    // notifications at a destroyed drawer.
+    if (dataChangeListenerInstance != null) {
+      dataUtils.unregisterOnDataChangedListener(dataChangeListenerInstance);
+      dataChangeListenerInstance = null;
+    }
+
+    // The root shell and NetCopyClientConnectionPool are process-wide singletons.
+    // Only shut them down once the last MainActivity / MainActivityNewWindow
+    // instance is being destroyed, otherwise closing a secondary "New window"
+    // panel would break ongoing root operations and FTP/SFTP sessions on the
+    // surviving primary panel.
+    if (LIVE_MAIN_ACTIVITY_COUNT.decrementAndGet() <= 0) {
+      closeInteractiveShell();
+      NetCopyClientConnectionPool.INSTANCE.shutdown();
+    }
     if (drawer != null && drawer.getBilling() != null) {
       drawer.getBilling().destroyBillingInstance();
     }
@@ -1754,8 +1852,22 @@ public class MainActivity extends PermissionsActivity
   }
 
   void initialisePreferences() {
-    currentTab = getCurrentTab();
+    activeTabIndex = getCurrentTab();
     skinStatusBar = PreferenceUtils.getStatusColor(getPrimary());
+  }
+
+  /** Returns the currently selected tab index (0 or 1) for this MainActivity panel. */
+  public int getActiveTabIndex() {
+    return activeTabIndex;
+  }
+
+  /**
+   * Updates this panel's active tab index and persists it as the last-seen tab in shared
+   * preferences so the next fresh MainActivity launch restores the same tab.
+   */
+  public void setActiveTabIndex(int tab) {
+    this.activeTabIndex = tab;
+    getPrefs().edit().putInt(PreferencesConstants.PREFERENCE_CURRENT_TAB, tab).apply();
   }
 
   void initialiseViews() {
@@ -1790,8 +1902,8 @@ public class MainActivity extends PermissionsActivity
 
   /**
    * Call this method when you need to update the MainActivity view components' colors based on
-   * update in the {@link MainActivity#currentTab} Warning - All the variables should be initialised
-   * before calling this method!
+   * update in the {@link MainActivity#activeTabIndex} Warning - All the variables should be
+   * initialised before calling this method!
    */
   public void updateViews(ColorDrawable colorDrawable) {
     // appbar view color

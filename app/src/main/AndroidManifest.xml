@@ -85,6 +85,13 @@
             android:name="com.oculus.intent.category.2D"
             android:value="true" />
 
+        <!-- MainActivity keeps its original launchMode="singleInstance" so existing intent
+             filters (file open, SEND targets, launcher pinning) behave exactly as before.
+             resizeableActivity + allowEmbedded let the single panel be resized inside the
+             Horizon OS VR shell or Android split-screen. Multi-window is routed through
+             a dedicated MainActivityNewWindow sibling activity instead (see below) — this
+             preserves pre-API-31 behaviour, since singleInstancePerTask silently falls
+             back to standard on older devices. -->
         <activity
             android:exported="true"
             android:label="@string/appbar_name"
@@ -94,6 +101,8 @@
             android:configChanges="uiMode"
             android:screenOrientation="sensorLandscape"
             android:windowSoftInputMode="adjustPan"
+            android:resizeableActivity="true"
+            android:allowEmbedded="true"
            >
 
             <intent-filter android:label="@string/appbar_name">
@@ -162,6 +171,30 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
+        <!-- Sibling of MainActivity used exclusively as the target of the "New window"
+             menu action. Declared with launchMode="singleInstancePerTask" (API 31+, which
+             covers Quest 3 and modern Android phones) so each launch produces a distinct
+             task with its own recent-apps card / Horizon OS panel. documentLaunchMode=
+             "always" additionally forces task creation on pre-31 devices where the launch
+             mode attribute silently falls back to "standard". This keeps MainActivity's
+             own launchMode (singleInstance) untouched so existing intent routing, the
+             launcher icon pinning, SEND targets, and file-open intents behave exactly
+             as before. -->
+        <activity
+            android:exported="false"
+            android:label="@string/appbar_name"
+            android:launchMode="singleInstancePerTask"
+            android:name=".ui.activities.MainActivityNewWindow"
+            android:theme="@style/appCompatBlack"
+            android:configChanges="uiMode"
+            android:screenOrientation="sensorLandscape"
+            android:windowSoftInputMode="adjustPan"
+            android:resizeableActivity="true"
+            android:allowEmbedded="true"
+            android:documentLaunchMode="always"
+            android:taskAffinity=""
+            tools:targetApi="31" />
+
         <activity
             android:exported="true"
             android:uiOptions="splitActionBarWhenNarrow"
@@ -181,7 +214,9 @@
             android:name=".ui.activities.texteditor.TextEditorActivity"
             android:configChanges="uiMode"
             android:screenOrientation="sensorLandscape"
-            android:theme="@style/appCompatBlack">
+            android:theme="@style/appCompatBlack"
+            android:resizeableActivity="true"
+            android:allowEmbedded="true">
             <intent-filter
                 tools:ignore="AppLinkUrlError"
                 android:label="Amaze Text Editor">
@@ -214,7 +249,10 @@
             android:configChanges="orientation|screenSize|uiMode|keyboardHidden"
             android:screenOrientation="sensorLandscape"
             android:theme="@style/appCompatBlack"
-            android:launchMode="singleTask">
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:allowEmbedded="true"
+            android:supportsPictureInPicture="true">
             <intent-filter
                 tools:ignore="AppLinkUrlError"
                 android:label="@string/vr_video_player">

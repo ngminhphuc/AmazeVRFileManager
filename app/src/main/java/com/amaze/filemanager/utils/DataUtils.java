@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,7 +80,13 @@ public class DataUtils {
   /** List of checked items to persist when drag and drop from one tab to another */
   private ArrayList<LayoutElementParcelable> checkedItemsList;
 
-  private DataChangeListener dataChangeListener;
+  /**
+   * Active drawer listeners. A list (rather than a single field) is required because multiple
+   * MainActivity / MainActivityNewWindow panels can be alive simultaneously on Meta Quest 3, and
+   * each one needs to be notified when shared singleton data (bookmarks, hidden files, history,
+   * etc.) is mutated from any panel.
+   */
+  private final List<DataChangeListener> dataChangeListeners = new CopyOnWriteArrayList<>();
 
   private DataUtils() {}
 
@@ -278,10 +285,25 @@ public class DataUtils {
     accounts = new ArrayList<>();
   }
 
+  /**
+   * Registers a listener that is notified on shared-data mutations. Does NOT call {@link #clear()}
+   * — callers are responsible for deciding when the underlying data needs to be reset (typically
+   * only when the first MainActivity instance is spawning in {@code onCreate}).
+   */
   public void registerOnDataChangedListener(DataChangeListener l) {
+    if (l != null && !dataChangeListeners.contains(l)) {
+      dataChangeListeners.add(l);
+    }
+  }
 
-    dataChangeListener = l;
-    clear();
+  /**
+   * Removes a previously registered listener. Safe to call with a listener that was never
+   * registered or with {@code null}.
+   */
+  public void unregisterOnDataChangedListener(@Nullable DataChangeListener l) {
+    if (l != null) {
+      dataChangeListeners.remove(l);
+    }
   }
 
   int contains(String a, ArrayList<String[]> b) {
@@ -371,8 +393,8 @@ public class DataUtils {
         books.add(i);
       }
 
-      if (dataChangeListener != null) {
-        dataChangeListener.onBookAdded(i, refreshdrawer);
+      for (DataChangeListener listener : dataChangeListeners) {
+        listener.onBookAdded(i, refreshdrawer);
       }
 
       return true;
@@ -392,8 +414,8 @@ public class DataUtils {
     synchronized (hiddenfiles) {
       hiddenfiles.put(i, VoidValue.SINGLETON);
     }
-    if (dataChangeListener != null) {
-      dataChangeListener.onHiddenFileAdded(i);
+    for (DataChangeListener listener : dataChangeListeners) {
+      listener.onHiddenFileAdded(i);
     }
   }
 
@@ -402,8 +424,8 @@ public class DataUtils {
     synchronized (hiddenfiles) {
       hiddenfiles.remove(i);
     }
-    if (dataChangeListener != null) {
-      dataChangeListener.onHiddenFileRemoved(i);
+    for (DataChangeListener listener : dataChangeListeners) {
+      listener.onHiddenFileRemoved(i);
     }
   }
 
@@ -418,8 +440,8 @@ public class DataUtils {
 
   public void addHistoryFile(final String i) {
     history.push(i);
-    if (dataChangeListener != null) {
-      dataChangeListener.onHistoryAdded(i);
+    for (DataChangeListener listener : dataChangeListeners) {
+      listener.onHistoryAdded(i);
     }
   }
 
@@ -518,8 +540,8 @@ public class DataUtils {
 
   public void clearHistory() {
     history.clear();
-    if (dataChangeListener != null) {
-      AppConfig.getInstance().runInBackground(() -> dataChangeListener.onHistoryCleared());
+    for (DataChangeListener listener : dataChangeListeners) {
+      AppConfig.getInstance().runInBackground(listener::onHistoryCleared);
     }
   }
 

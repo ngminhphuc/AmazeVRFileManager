@@ -140,7 +140,7 @@ public class TabFragment extends Fragment {
     sectionsPagerAdapter = new ScreenSlidePagerAdapter(requireActivity());
     if (savedInstanceState == null) {
       int lastOpenTab = sharedPrefs.getInt(PREFERENCE_CURRENT_TAB, DEFAULT_CURRENT_TAB);
-      MainActivity.currentTab = lastOpenTab;
+      requireMainActivity().setActiveTabIndex(lastOpenTab);
 
       refactorDrawerStorages(true, hideFab);
 
@@ -167,7 +167,7 @@ public class TabFragment extends Fragment {
 
       viewPager.setAdapter(sectionsPagerAdapter);
       int pos1 = savedInstanceState.getInt(KEY_POSITION, 0);
-      MainActivity.currentTab = pos1;
+      requireMainActivity().setActiveTabIndex(pos1);
       viewPager.setCurrentItem(pos1);
       sectionsPagerAdapter.notifyDataSetChanged();
     }
@@ -183,9 +183,9 @@ public class TabFragment extends Fragment {
 
     /*
      TODO
-    //update the views as there is any change in {@link MainActivity#currentTab}
+    //update the views as there is any change in {@link MainActivity#getActiveTabIndex()}
     //probably due to config change
-    colorDrawable.setColor(Color.parseColor(MainActivity.currentTab==1 ?
+    colorDrawable.setColor(Color.parseColor(requireMainActivity().getActiveTabIndex()==1 ?
             ThemedActivity.skinTwo : ThemedActivity.skin));
     mainActivity.updateViews(colorDrawable);
     */
@@ -196,7 +196,8 @@ public class TabFragment extends Fragment {
   @Override
   public void onDestroyView() {
     indicator = null; // Free the strong reference
-    sharedPrefs.edit().putInt(PREFERENCE_CURRENT_TAB, MainActivity.currentTab).apply();
+    // PREFERENCE_CURRENT_TAB is persisted inside MainActivity.setActiveTabIndex() on every tab
+    // change, so no additional write is needed here.
     super.onDestroyView();
   }
 
@@ -209,7 +210,7 @@ public class TabFragment extends Fragment {
       if (fragment instanceof MainFragment) {
         MainFragment mainFragment = (MainFragment) fragment;
         if (mainFragment.getMainFragmentViewModel() != null
-            && i - 1 == MainActivity.currentTab
+            && i - 1 == requireMainActivity().getActiveTabIndex()
             && i == pos) {
           updateBottomBar(mainFragment);
           requireMainActivity()
@@ -237,10 +238,8 @@ public class TabFragment extends Fragment {
   @Override
   public void onSaveInstanceState(@NonNull Bundle outState) {
     super.onSaveInstanceState(outState);
-
-    if (sharedPrefs != null) {
-      sharedPrefs.edit().putInt(PREFERENCE_CURRENT_TAB, MainActivity.currentTab).apply();
-    }
+    // PREFERENCE_CURRENT_TAB is persisted inside MainActivity.setActiveTabIndex() on every tab
+    // change, so no additional write is needed here.
 
     if (fragments.size() != 0) {
       if (fragmentManager == null) {
@@ -305,11 +304,9 @@ public class TabFragment extends Fragment {
           .setInterpolator(new DecelerateInterpolator(2))
           .start();
 
-      MainActivity.currentTab = p1;
-
-      if (sharedPrefs != null) {
-        sharedPrefs.edit().putInt(PREFERENCE_CURRENT_TAB, MainActivity.currentTab).apply();
-      }
+      // setActiveTabIndex persists PREFERENCE_CURRENT_TAB internally, so no explicit
+      // sharedPrefs write is needed here.
+      requireMainActivity().setActiveTabIndex(p1);
 
       Fragment fragment = fragments.get(p1);
       if (fragment instanceof MainFragment) {
@@ -431,12 +428,13 @@ public class TabFragment extends Fragment {
       }
     } else {
       if (path != null && path.length() != 0) {
-        if (MainActivity.currentTab == 0) {
+        int activeTab = requireMainActivity().getActiveTabIndex();
+        if (activeTab == 0) {
           addTab(tab1, path, hideFabInCurrentMainFragment);
           addTab(tab2, "", false);
         }
 
-        if (MainActivity.currentTab == 1) {
+        if (activeTab == 1) {
           addTab(tab1, "", false);
           addTab(tab2, path, hideFabInCurrentMainFragment);
         }

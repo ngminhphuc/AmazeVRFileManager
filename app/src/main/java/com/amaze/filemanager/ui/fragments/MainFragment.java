@@ -253,7 +253,7 @@ public class MainFragment extends Fragment
 
     // String itemsstring = res.getString(R.string.items);// TODO: 23/5/2017 use or delete
     mToolbarContainer.setBackgroundColor(
-        MainActivity.currentTab == 1
+        requireMainActivity().getActiveTabIndex() == 1
             ? mainFragmentViewModel.getPrimaryTwoColor()
             : mainFragmentViewModel.getPrimaryColor());
 

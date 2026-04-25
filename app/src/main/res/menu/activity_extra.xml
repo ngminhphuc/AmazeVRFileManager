@@ -46,6 +46,10 @@
         app:showAsAction="ifRoom"
         android:title="@string/history"/>
     <item
+        android:id="@+id/new_window"
+        android:title="@string/new_window"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/view"
         android:title=""/>
     <item

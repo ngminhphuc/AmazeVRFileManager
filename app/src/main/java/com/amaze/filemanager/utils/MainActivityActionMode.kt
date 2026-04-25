@@ -427,7 +427,7 @@ class MainActivityActionMode(private val mainActivityReference: WeakReference<Ma
                 mainActivity
                     .updateViews(
                         ColorDrawable(
-                            if (MainActivity.currentTab == 1) {
+                            if (mainActivity.activeTabIndex == 1) {
                                 mainFragmentViewModel.primaryTwoColor
                             } else {
                                 mainFragmentViewModel.primaryColor
