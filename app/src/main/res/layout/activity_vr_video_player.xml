@@ -61,4 +61,17 @@
         android:layout_gravity="center"
         android:indeterminate="true"
         android:visibility="gone" />
+
+    <!-- Translucent toolbar overlaid on top of the video. Hosts the projection
+         menu (Flat / 360° / 180°) and the back/up button. Kept visible so the
+         menu is always reachable; the PlayerView's own controller auto-hides
+         after inactivity and occupies the bottom half of the screen. -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/vr_player_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:layout_gravity="top"
+        android:background="#80000000"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
 </FrameLayout>
