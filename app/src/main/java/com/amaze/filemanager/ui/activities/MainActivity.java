@@ -65,6 +65,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
@@ -226,6 +227,14 @@ public class MainActivity extends PermissionsActivity
 
   private static final Logger LOG = LoggerFactory.getLogger(MainActivity.class);
 
+  /**
+   * Process-wide count of live MainActivity (and MainActivityNewWindow) instances. Incremented in
+   * onCreate, decremented in onDestroy. Guards the release of process-scoped singletons — the libsu
+   * interactive root shell and NetCopyClientConnectionPool — so that closing a secondary "New
+   * window" panel does not tear down resources still needed by the surviving primary panel.
+   */
+  private static final AtomicInteger LIVE_MAIN_ACTIVITY_COUNT = new AtomicInteger(0);
+
   public static final Pattern DIR_SEPARATOR = Pattern.compile("/");
   public static final String TAG_ASYNC_HELPER = "async_helper";
 
@@ -363,6 +372,8 @@ public class MainActivity extends PermissionsActivity
     initializeInteractiveShell();
 
     dataUtils.registerOnDataChangedListener(new SaveOnDataUtilsChange(drawer));
+
+    LIVE_MAIN_ACTIVITY_COUNT.incrementAndGet();
 
     // setMainActivityContext(this) is also called from onResume() below so that
     // whichever MainActivity (or MainActivityNewWindow) is foregrounded owns the
@@ -1538,8 +1549,16 @@ public class MainActivity extends PermissionsActivity
     super.onDestroy();
     // TODO: 6/5/2017 Android may choose to not call this method before destruction
     // TODO: https://developer.android.com/reference/android/app/Activity.html#onDestroy%28%29
-    closeInteractiveShell();
-    NetCopyClientConnectionPool.INSTANCE.shutdown();
+
+    // The root shell and NetCopyClientConnectionPool are process-wide singletons.
+    // Only shut them down once the last MainActivity / MainActivityNewWindow
+    // instance is being destroyed, otherwise closing a secondary "New window"
+    // panel would break ongoing root operations and FTP/SFTP sessions on the
+    // surviving primary panel.
+    if (LIVE_MAIN_ACTIVITY_COUNT.decrementAndGet() <= 0) {
+      closeInteractiveShell();
+      NetCopyClientConnectionPool.INSTANCE.shutdown();
+    }
     if (drawer != null && drawer.getBilling() != null) {
       drawer.getBilling().destroyBillingInstance();
     }
