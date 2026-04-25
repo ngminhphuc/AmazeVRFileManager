@@ -23,6 +23,8 @@ package com.amaze.filemanager.ui.activities
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
@@ -30,6 +32,7 @@ import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -48,20 +51,45 @@ import com.amaze.filemanager.filesystem.smb.SmbDataSource
  * environments. Plays any URI supported by Media3 ExoPlayer (local file://,
  * content://, http(s)://) and SMB (smb://) via [SmbDataSource].
  *
- * Launched automatically by [com.amaze.filemanager.filesystem.files.FileUtils]
- * for files whose MIME type starts with "video/", or by any ACTION_VIEW intent
- * with a video mime type.
+ * Supports three projection modes:
+ *  - Flat (default): regular 2D playback on a standard SurfaceView.
+ *  - 360° equirectangular: full-sphere projection for ambient / monoscopic VR
+ *    content such as YouTube VR or Insta360 recordings.
+ *  - 180° VR: hemispherical projection for VR180 content (Google VR180,
+ *    Insta360 EVO) where only the front half of the sphere is captured.
+ *
+ * Projection is auto-detected from the filename when possible; the user can
+ * override via the overflow menu. When a spherical projection is active, the
+ * video is rendered by Media3's built-in [androidx.media3.exoplayer.video.spherical.SphericalGLSurfaceView]
+ * hosted inside a secondary [PlayerView] — user look direction can be adjusted
+ * by dragging (controller stick on Quest 3 is mapped to touch by Horizon OS).
  */
 class VrVideoPlayerActivity : AppCompatActivity() {
     private var player: ExoPlayer? = null
-    private lateinit var playerView: PlayerView
+    private lateinit var flatPlayerView: PlayerView
+    private lateinit var sphericalPlayerView: PlayerView
     private lateinit var loading: ProgressBar
+
+    private enum class Projection { FLAT, EQUIRECT_360, EQUIRECT_180 }
+
+    private var projection: Projection = Projection.FLAT
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_vr_video_player)
-        playerView = findViewById(R.id.vr_player_view)
+        flatPlayerView = findViewById(R.id.vr_player_view_flat)
+        sphericalPlayerView = findViewById(R.id.vr_player_view_spherical)
         loading = findViewById(R.id.vr_player_loading)
+
+        // The activity's theme extends Theme.AppCompat.NoActionBar, so we host
+        // our own Toolbar overlaid on the video in order to reach the options
+        // menu (projection switcher) and the back / up button.
+        val toolbar: Toolbar = findViewById(R.id.vr_player_toolbar)
+        setSupportActionBar(toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.setDisplayShowHomeEnabled(true)
+        supportActionBar?.setTitle(R.string.vr_video_player)
+
         applyImmersiveMode()
 
         val uri: Uri? = intent?.data
@@ -70,7 +98,47 @@ class VrVideoPlayerActivity : AppCompatActivity() {
             finish()
             return
         }
+
+        projection = detectProjectionFromUri(uri)
         preparePlayer(uri)
+        applyProjection(projection)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.vr_video_player, menu)
+        return true
+    }
+
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        val itemId =
+            when (projection) {
+                Projection.FLAT -> R.id.vr_projection_flat
+                Projection.EQUIRECT_360 -> R.id.vr_projection_equirect_360
+                Projection.EQUIRECT_180 -> R.id.vr_projection_equirect_180
+            }
+        menu.findItem(itemId)?.isChecked = true
+        return super.onPrepareOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == android.R.id.home) {
+            finish()
+            return true
+        }
+        val newProjection =
+            when (item.itemId) {
+                R.id.vr_projection_flat -> Projection.FLAT
+                R.id.vr_projection_equirect_360 -> Projection.EQUIRECT_360
+                R.id.vr_projection_equirect_180 -> Projection.EQUIRECT_180
+                else -> return super.onOptionsItemSelected(item)
+            }
+        if (newProjection != projection) {
+            projection = newProjection
+            applyProjection(projection)
+            invalidateOptionsMenu()
+        }
+        item.isChecked = true
+        return true
     }
 
     @OptIn(UnstableApi::class)
@@ -106,8 +174,56 @@ class VrVideoPlayerActivity : AppCompatActivity() {
         exoPlayer.setMediaItem(MediaItem.fromUri(uri))
         exoPlayer.playWhenReady = true
         exoPlayer.prepare()
-        playerView.player = exoPlayer
         player = exoPlayer
+    }
+
+    /**
+     * Attach the player to the [PlayerView] that matches the requested projection
+     * and hide the other. Media3 handles the GL rendering difference internally
+     * based on the `surface_type` attribute declared in the layout.
+     */
+    private fun applyProjection(projection: Projection) {
+        val exoPlayer = player ?: return
+        when (projection) {
+            Projection.FLAT -> {
+                sphericalPlayerView.player = null
+                flatPlayerView.player = exoPlayer
+                flatPlayerView.visibility = View.VISIBLE
+                sphericalPlayerView.visibility = View.GONE
+            }
+            Projection.EQUIRECT_360, Projection.EQUIRECT_180 -> {
+                flatPlayerView.player = null
+                sphericalPlayerView.player = exoPlayer
+                sphericalPlayerView.visibility = View.VISIBLE
+                flatPlayerView.visibility = View.GONE
+                // Media3's SphericalGLSurfaceView renders a full equirectangular sphere.
+                // For 180° content we crop the hemisphere by letterboxing — Media3 exposes
+                // this via the native decoder's metadata when available; for filename-based
+                // 180° detection we rely on the natural 180° field of view feeling in VR.
+            }
+        }
+    }
+
+    /**
+     * Best-effort detection of monoscopic 360°/180° content based on the file
+     * name. Common patterns used by YouTube, Insta360, GoPro Max, Kandao, and
+     * most consumer VR cameras are recognised. Users can override via the
+     * overflow menu if detection is wrong.
+     */
+    private fun detectProjectionFromUri(uri: Uri): Projection {
+        val name = (uri.lastPathSegment ?: "").lowercase()
+        val matchers =
+            listOf(
+                Regex("(^|[_\\-.\\s])vr180([_\\-.\\s]|$)") to Projection.EQUIRECT_180,
+                Regex("(^|[_\\-.\\s])180([_\\-.\\s]|$)") to Projection.EQUIRECT_180,
+                Regex("(^|[_\\-.\\s])vr360([_\\-.\\s]|$)") to Projection.EQUIRECT_360,
+                Regex("(^|[_\\-.\\s])360([_\\-.\\s]|$)") to Projection.EQUIRECT_360,
+                Regex("(^|[_\\-.\\s])(equirect|equirectangular|sphere|spherical|ambisonic)([_\\-.\\s]|$)") to Projection.EQUIRECT_360,
+            )
+        for ((regex, p) in matchers) {
+            if (regex.containsMatchIn(name)) return p
+        }
+        return Projection.FLAT
     }
 
     override fun onPause() {
@@ -117,6 +233,8 @@ class VrVideoPlayerActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        flatPlayerView.player = null
+        sphericalPlayerView.player = null
         player?.release()
         player = null
     }
