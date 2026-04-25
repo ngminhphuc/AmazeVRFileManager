@@ -1232,6 +1232,8 @@ public class MainActivity extends PermissionsActivity
             dialog.show();
           } else if (item.getItemId() == R.id.exit) {
             finish();
+          } else if (item.getItemId() == R.id.new_window) {
+            launchNewWindow();
           } else if (item.getItemId() == R.id.sortby) {
             GeneralDialogCreation.showSortDialog(mainFragment, getAppTheme(), getPrefs());
           } else if (item.getItemId() == R.id.dsort) {
@@ -1333,6 +1335,25 @@ public class MainActivity extends PermissionsActivity
     super.onPostCreate(savedInstanceState);
     // Sync the toggle state after onRestoreInstanceState has occurred.
     drawer.syncState();
+  }
+
+  /**
+   * Launch a fresh MainActivity instance in a new task so the user ends up with two independent
+   * Amaze panels on Meta Quest 3 (or split-screen on phone / tablet).
+   *
+   * <p>Requires the activity to be declared with {@code launchMode="singleInstancePerTask"} (see
+   * AndroidManifest) so the system treats this call as a new top-level task rather than routing
+   * back to the existing instance. Uses {@code FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_MULTIPLE_TASK
+   * | FLAG_ACTIVITY_NEW_DOCUMENT} to force task creation even when the launcher has pinned an
+   * existing task.
+   */
+  private void launchNewWindow() {
+    Intent intent = new Intent(this, MainActivity.class);
+    intent.setFlags(
+        Intent.FLAG_ACTIVITY_NEW_TASK
+            | Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+            | Intent.FLAG_ACTIVITY_NEW_DOCUMENT);
+    startActivity(intent);
   }
 
   @Override

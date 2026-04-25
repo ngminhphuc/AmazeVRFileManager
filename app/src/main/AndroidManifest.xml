@@ -85,15 +85,25 @@
             android:name="com.oculus.intent.category.2D"
             android:value="true" />
 
+        <!-- launchMode=singleInstancePerTask (API 31+, which covers Quest 3 / Horizon OS
+             and all modern Android phones) lets the user open multiple independent panels
+             of Amaze on Quest 3 for side-by-side browsing. On pre-31 devices Android
+             silently falls back to the default standard launch mode which still works
+             for single-instance usage. Combined with resizeableActivity + allowEmbedded
+             so each panel can be freely resized / positioned inside the VR shell. -->
         <activity
             android:exported="true"
             android:label="@string/appbar_name"
-            android:launchMode="singleInstance"
+            android:launchMode="singleInstancePerTask"
             android:name=".ui.activities.MainActivity"
             android:theme="@style/appCompatBlack"
             android:configChanges="uiMode"
             android:screenOrientation="sensorLandscape"
             android:windowSoftInputMode="adjustPan"
+            android:resizeableActivity="true"
+            android:allowEmbedded="true"
+            android:documentLaunchMode="intoExisting"
+            tools:targetApi="31"
            >
 
             <intent-filter android:label="@string/appbar_name">
@@ -181,7 +191,9 @@
             android:name=".ui.activities.texteditor.TextEditorActivity"
             android:configChanges="uiMode"
             android:screenOrientation="sensorLandscape"
-            android:theme="@style/appCompatBlack">
+            android:theme="@style/appCompatBlack"
+            android:resizeableActivity="true"
+            android:allowEmbedded="true">
             <intent-filter
                 tools:ignore="AppLinkUrlError"
                 android:label="Amaze Text Editor">
@@ -214,7 +226,10 @@
             android:configChanges="orientation|screenSize|uiMode|keyboardHidden"
             android:screenOrientation="sensorLandscape"
             android:theme="@style/appCompatBlack"
-            android:launchMode="singleTask">
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:allowEmbedded="true"
+            android:supportsPictureInPicture="true">
             <intent-filter
                 tools:ignore="AppLinkUrlError"
                 android:label="@string/vr_video_player">

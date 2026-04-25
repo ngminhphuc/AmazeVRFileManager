@@ -818,6 +818,7 @@ You only need to do this once, until the next time you select a new location for
     <string name="vr_video_player_loading">Loading video…</string>
     <string name="markdown_preview">Markdown preview</string>
     <string name="markdown_edit">Edit markdown</string>
+    <string name="new_window">New window</string>
     <string name="pdf_viewer">Amaze Document Viewer</string>
     <string name="docx_viewer">Amaze Document Viewer</string>
     <string name="share_logs">Share logs</string>
