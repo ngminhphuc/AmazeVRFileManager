@@ -235,6 +235,13 @@ public class MainActivity extends PermissionsActivity
    */
   private static final AtomicInteger LIVE_MAIN_ACTIVITY_COUNT = new AtomicInteger(0);
 
+  /**
+   * Per-instance DataUtils drawer listener. Held as a field so we can cleanly unregister it in
+   * {@link #onDestroy()} — important now that multiple MainActivity / MainActivityNewWindow panels
+   * can share the DataUtils singleton and each registers its own listener.
+   */
+  private SaveOnDataUtilsChange dataChangeListenerInstance;
+
   public static final Pattern DIR_SEPARATOR = Pattern.compile("/");
   public static final String TAG_ASYNC_HELPER = "async_helper";
 
@@ -371,9 +378,18 @@ public class MainActivity extends PermissionsActivity
     initialisePreferences();
     initializeInteractiveShell();
 
-    dataUtils.registerOnDataChangedListener(new SaveOnDataUtilsChange(drawer));
-
-    LIVE_MAIN_ACTIVITY_COUNT.incrementAndGet();
+    // Increment before clearing / registering so that isFirstInstance is decided atomically
+    // against concurrent onCreate calls from MainActivityNewWindow launches.
+    boolean isFirstInstance = LIVE_MAIN_ACTIVITY_COUNT.getAndIncrement() == 0;
+    if (isFirstInstance) {
+      // Only the first panel resets DataUtils; subsequent panels inherit the populated singleton.
+      // If we cleared here every time, opening "New window" would wipe bookmarks, hidden files,
+      // history, server definitions, and cloud accounts out from under the still-live primary
+      // panel before the async reload below had a chance to repopulate them.
+      dataUtils.clear();
+    }
+    dataChangeListenerInstance = new SaveOnDataUtilsChange(drawer);
+    dataUtils.registerOnDataChangedListener(dataChangeListenerInstance);
 
     // setMainActivityContext(this) is also called from onResume() below so that
     // whichever MainActivity (or MainActivityNewWindow) is foregrounded owns the
@@ -1549,6 +1565,13 @@ public class MainActivity extends PermissionsActivity
     super.onDestroy();
     // TODO: 6/5/2017 Android may choose to not call this method before destruction
     // TODO: https://developer.android.com/reference/android/app/Activity.html#onDestroy%28%29
+
+    // Unregister this panel's drawer listener so DataUtils stops pushing change
+    // notifications at a destroyed drawer.
+    if (dataChangeListenerInstance != null) {
+      dataUtils.unregisterOnDataChangedListener(dataChangeListenerInstance);
+      dataChangeListenerInstance = null;
+    }
 
     // The root shell and NetCopyClientConnectionPool are process-wide singletons.
     // Only shut them down once the last MainActivity / MainActivityNewWindow
