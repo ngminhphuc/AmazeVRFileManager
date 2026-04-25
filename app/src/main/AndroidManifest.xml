@@ -53,6 +53,18 @@
     <uses-feature android:name="android.software.leanback"
         android:required="false" />
 
+    <!-- Meta Quest / VR compatibility: declare the app as usable in VR without requiring VR hardware -->
+    <uses-feature
+        android:name="android.hardware.vr.headtracking"
+        android:required="false"
+        android:version="1" />
+    <uses-feature
+        android:name="oculus.software.handtracking"
+        android:required="false" />
+    <uses-feature
+        android:name="oculus.software.trackedkeyboard"
+        android:required="false" />
+
     <application
         android:name=".application.AppConfig"
         android:icon="@mipmap/ic_launcher"
@@ -64,6 +76,15 @@
         android:localeConfig="@xml/locales_config"
         android:networkSecurityConfig="@xml/network_security_config">
 
+        <!-- Meta Quest supported devices: lets the app show up on Quest stores / launchers -->
+        <meta-data
+            android:name="com.oculus.supportedDevices"
+            android:value="quest2|quest3|questpro|quest3s" />
+        <!-- Declare the app as a 2D Android panel app on Horizon OS (not an immersive VR app) -->
+        <meta-data
+            android:name="com.oculus.intent.category.2D"
+            android:value="true" />
+
         <activity
             android:exported="true"
             android:label="@string/appbar_name"
@@ -71,6 +92,7 @@
             android:name=".ui.activities.MainActivity"
             android:theme="@style/appCompatBlack"
             android:configChanges="uiMode"
+            android:screenOrientation="sensorLandscape"
             android:windowSoftInputMode="adjustPan"
            >
 
@@ -158,6 +180,7 @@
             android:label="@string/textreader"
             android:name=".ui.activities.texteditor.TextEditorActivity"
             android:configChanges="uiMode"
+            android:screenOrientation="sensorLandscape"
             android:theme="@style/appCompatBlack">
             <intent-filter
                 tools:ignore="AppLinkUrlError"
@@ -168,8 +191,38 @@
                 <data android:mimeType="application/javascript" />
                 <data android:mimeType="application/json" />
                 <data android:mimeType="application/xml" />
+                <data android:mimeType="text/markdown" />
+                <data android:mimeType="text/x-markdown" />
+            </intent-filter>
+            <intent-filter
+                tools:ignore="AppLinkUrlError"
+                android:label="Amaze Text Editor">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file" android:pathPattern=".*\\.md" />
+                <data android:scheme="file" android:pathPattern=".*\\.markdown" />
+                <data android:scheme="content" android:pathPattern=".*\\.md" />
+                <data android:scheme="content" android:pathPattern=".*\\.markdown" />
             </intent-filter>
 
+        </activity>
+
+        <activity
+            android:exported="true"
+            android:label="@string/vr_video_player"
+            android:name=".ui.activities.VrVideoPlayerActivity"
+            android:configChanges="orientation|screenSize|uiMode|keyboardHidden"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/appCompatBlack"
+            android:launchMode="singleTask">
+            <intent-filter
+                tools:ignore="AppLinkUrlError"
+                android:label="@string/vr_video_player">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="video/*" />
+            </intent-filter>
         </activity>
         <activity
             android:exported="true"

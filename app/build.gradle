@@ -257,6 +257,20 @@ dependencies {
 
     implementation libs.gson
     implementation libs.amaze.trashBin
+
+    //Media3 ExoPlayer: inline VR video playback (local, HTTP, SMB)
+    implementation libs.media3.exoplayer
+    implementation libs.media3.ui
+    implementation libs.media3.datasource
+    implementation libs.media3.common
+
+    //Markwon: Markdown rendering for .md/.markdown preview
+    implementation libs.markwon.core
+    implementation libs.markwon.ext.tables
+    implementation libs.markwon.ext.strikethrough
+    implementation libs.markwon.ext.tasklist
+    implementation libs.markwon.linkify
+    implementation libs.markwon.html
 }
 
 kotlin {

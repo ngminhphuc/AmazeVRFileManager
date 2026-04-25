@@ -50,6 +50,7 @@ import com.amaze.filemanager.filesystem.cloud.CloudUtil;
 import com.amaze.filemanager.filesystem.compressed.CompressedHelper;
 import com.amaze.filemanager.ui.activities.DatabaseViewerActivity;
 import com.amaze.filemanager.ui.activities.MainActivity;
+import com.amaze.filemanager.ui.activities.VrVideoPlayerActivity;
 import com.amaze.filemanager.ui.activities.superclasses.PermissionsActivity;
 import com.amaze.filemanager.ui.activities.superclasses.PreferenceActivity;
 import com.amaze.filemanager.ui.dialogs.GeneralDialogCreation;
@@ -672,6 +673,8 @@ public class FileUtils {
       intent.setType(MimeTypes.getMimeType(f.getPath(), false));
       intent.putExtra("path", f.getPath());
       mainActivity.startActivity(intent);
+    } else if (isVideoFile(f.getPath())) {
+      launchVrVideoPlayer(mainActivity, f);
     } else {
       try {
         openFileDialogFragmentFor(f, mainActivity, useNewStack);
@@ -748,7 +751,60 @@ public class FileUtils {
     }
   }
 
+  /**
+   * Returns true if the given path points to a video file (based on the MIME type). Used to route
+   * clicks on video files directly to the inline {@link VrVideoPlayerActivity} instead of going
+   * through Android's intent chooser.
+   */
+  public static boolean isVideoFile(String path) {
+    if (path == null) return false;
+    String mimeType = MimeTypes.getMimeType(path, false);
+    return mimeType != null && mimeType.startsWith("video/");
+  }
+
+  /**
+   * Opens the given local file in the inline {@link VrVideoPlayerActivity}. Falls back to the
+   * standard open-file chooser if launching the inline player fails.
+   */
+  public static void launchVrVideoPlayer(@NonNull MainActivity mainActivity, @NonNull File file) {
+    try {
+      Uri uri = FileProvider.getUriForFile(mainActivity, mainActivity.getPackageName(), file);
+      Intent intent = new Intent(mainActivity, VrVideoPlayerActivity.class);
+      intent.setAction(Intent.ACTION_VIEW);
+      intent.setDataAndType(uri, MimeTypes.getMimeType(file.getPath(), false));
+      intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      mainActivity.startActivity(intent);
+    } catch (Exception e) {
+      LOG.warn("Failed to launch VrVideoPlayerActivity, falling back to chooser", e);
+      openWith(file, mainActivity, false);
+    }
+  }
+
+  /**
+   * Launches the inline {@link VrVideoPlayerActivity} directly against the given {@code smb://}
+   * URI. This avoids having to route the stream through {@link Streamer}'s local HTTP proxy.
+   */
+  public static void launchVrVideoPlayerSmb(
+      @NonNull Activity activity, @NonNull String smbPath, @NonNull String mimeType) {
+    try {
+      Intent intent = new Intent(activity, VrVideoPlayerActivity.class);
+      intent.setAction(Intent.ACTION_VIEW);
+      intent.setDataAndType(Uri.parse(smbPath), mimeType);
+      activity.startActivity(intent);
+    } catch (Exception e) {
+      LOG.warn("Failed to launch VrVideoPlayerActivity for SMB", e);
+      Toast.makeText(activity, R.string.vr_video_player_error, Toast.LENGTH_LONG).show();
+    }
+  }
+
   public static void launchSMB(final HybridFile baseFile, final Activity activity) {
+    // Short-circuit video files directly to VrVideoPlayerActivity; SmbDataSource streams
+    // the file natively, so we skip the local HTTP Streamer proxy entirely.
+    String smbMimeType = MimeTypes.getMimeType(baseFile.getPath(), false);
+    if (smbMimeType != null && smbMimeType.startsWith("video/")) {
+      launchVrVideoPlayerSmb(activity, baseFile.getPath(), smbMimeType);
+      return;
+    }
     final Streamer s = Streamer.getInstance();
     new Thread() {
       public void run() {

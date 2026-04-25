@@ -72,8 +72,16 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.widget.AppCompatEditText;
 import androidx.appcompat.widget.AppCompatImageButton;
+import androidx.appcompat.widget.AppCompatTextView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.lifecycle.ViewModelProvider;
+
+import io.noties.markwon.Markwon;
+import io.noties.markwon.ext.strikethrough.StrikethroughPlugin;
+import io.noties.markwon.ext.tables.TablePlugin;
+import io.noties.markwon.ext.tasklist.TaskListPlugin;
+import io.noties.markwon.html.HtmlPlugin;
+import io.noties.markwon.linkify.LinkifyPlugin;
 
 public class TextEditorActivity extends ThemedActivity
     implements TextWatcher, View.OnClickListener {
@@ -84,6 +92,11 @@ public class TextEditorActivity extends ThemedActivity
   private Typeface inputTypefaceMono;
   private androidx.appcompat.widget.Toolbar toolbar;
   ScrollView scrollView;
+
+  private ScrollView markdownScrollView;
+  private AppCompatTextView markdownPreview;
+  private Markwon markwon;
+  private boolean markdownPreviewActive = false;
 
   private SearchTextTask searchTextTask;
   private static final String KEY_MODIFIED_TEXT = "modified";
@@ -129,6 +142,8 @@ public class TextEditorActivity extends ThemedActivity
     }
     mainTextView = findViewById(R.id.textEditorMainEditText);
     scrollView = findViewById(R.id.textEditorScrollView);
+    markdownScrollView = findViewById(R.id.textEditorMarkdownScrollView);
+    markdownPreview = findViewById(R.id.textEditorMarkdownPreview);
 
     final Uri uri = getIntent().getData();
     if (uri != null) {
@@ -284,7 +299,62 @@ public class TextEditorActivity extends ThemedActivity
 
     menu.findItem(R.id.save).setVisible(viewModel.getModified());
     menu.findItem(R.id.monofont).setChecked(inputTypefaceMono.equals(mainTextView.getTypeface()));
+
+    MenuItem previewItem = menu.findItem(R.id.markdown_preview);
+    if (previewItem != null) {
+      previewItem.setVisible(isMarkdownFile());
+      previewItem.setTitle(
+          markdownPreviewActive ? R.string.markdown_edit : R.string.markdown_preview);
+    }
     return super.onPrepareOptionsMenu(menu);
+  }
+
+  private boolean isMarkdownFile() {
+    String name = null;
+    if (viewModel != null && viewModel.getFile() != null) {
+      name = viewModel.getFile().name;
+    }
+    if (name == null) return false;
+    String lower = name.toLowerCase();
+    return lower.endsWith(".md") || lower.endsWith(".markdown");
+  }
+
+  private Markwon getMarkwon() {
+    if (markwon == null) {
+      markwon =
+          Markwon.builder(this)
+              .usePlugin(StrikethroughPlugin.create())
+              .usePlugin(TablePlugin.create(this))
+              .usePlugin(TaskListPlugin.create(this))
+              .usePlugin(LinkifyPlugin.create())
+              .usePlugin(HtmlPlugin.create())
+              .build();
+    }
+    return markwon;
+  }
+
+  private void toggleMarkdownPreview() {
+    if (markdownScrollView == null || markdownPreview == null) return;
+    if (markdownPreviewActive) {
+      // Switch back to edit mode.
+      markdownScrollView.setVisibility(View.GONE);
+      scrollView.setVisibility(View.VISIBLE);
+      markdownPreviewActive = false;
+    } else {
+      // Render and show preview.
+      String source = mainTextView.getText() != null ? mainTextView.getText().toString() : "";
+      getMarkwon().setMarkdown(markdownPreview, source);
+      if (getAppTheme().equals(AppTheme.DARK) || getAppTheme().equals(AppTheme.BLACK)) {
+        markdownPreview.setBackgroundColor(Utils.getColor(this, android.R.color.black));
+        markdownPreview.setTextColor(Utils.getColor(this, R.color.primary_white));
+      } else {
+        markdownPreview.setTextColor(Utils.getColor(this, R.color.primary_grey_900));
+      }
+      scrollView.setVisibility(View.GONE);
+      markdownScrollView.setVisibility(View.VISIBLE);
+      markdownPreviewActive = true;
+    }
+    invalidateOptionsMenu();
   }
 
   @Override
@@ -336,6 +406,8 @@ public class TextEditorActivity extends ThemedActivity
     } else if (item.getItemId() == R.id.monofont) {
       item.setChecked(!item.isChecked());
       mainTextView.setTypeface(item.isChecked() ? inputTypefaceMono : inputTypefaceDefault);
+    } else if (item.getItemId() == R.id.markdown_preview) {
+      toggleMarkdownPreview();
     } else {
       return false;
     }
