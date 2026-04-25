@@ -1030,11 +1030,11 @@ public class MainActivity extends PermissionsActivity
 
   public void exit() {
     if (backPressedToExitOnce) {
-      NetCopyClientConnectionPool.INSTANCE.shutdown();
+      // Just finish() — the process-wide NetCopyClientConnectionPool and libsu
+      // root shell are torn down inside onDestroy() under the LIVE_MAIN_ACTIVITY_COUNT
+      // guard, which ensures they are not killed while a sibling MainActivity /
+      // MainActivityNewWindow panel is still alive.
       finish();
-      if (isRootExplorer()) {
-        closeInteractiveShell();
-      }
     } else {
       this.backPressedToExitOnce = true;
       final Toast toast = Toast.makeText(this, getString(R.string.press_again), Toast.LENGTH_SHORT);
