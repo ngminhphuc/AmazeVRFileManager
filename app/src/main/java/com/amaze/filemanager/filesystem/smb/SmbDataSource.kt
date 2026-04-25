@@ -52,21 +52,31 @@ class SmbDataSource : BaseDataSource(true) {
         this.uri = u
         val smbUrl = u.toString()
         val ctx = CifsContexts.create(smbUrl, null)
-        val smbFile = SmbFile(smbUrl, ctx)
-        val length = smbFile.length()
-        val randomAccessFile = SmbRandomAccessFile(smbFile, "r")
-        if (dataSpec.position > 0) {
-            randomAccessFile.seek(dataSpec.position)
-        }
-        this.raf = randomAccessFile
-        bytesRemaining =
-            if (dataSpec.length == C.LENGTH_UNSET.toLong()) {
-                length - dataSpec.position
-            } else {
-                dataSpec.length
+        // Scope the SmbFile so we always release its tree connection handle. The
+        // underlying SMB session used by SmbRandomAccessFile is held independently
+        // by the jcifs tree cache, so closing this local handle is safe.
+        SmbFile(smbUrl, ctx).use { smbFile ->
+            val length = smbFile.length()
+            val randomAccessFile = SmbRandomAccessFile(smbFile, "r")
+            // Assign immediately so close() will clean up if seek() below throws.
+            this.raf = randomAccessFile
+            try {
+                if (dataSpec.position > 0) {
+                    randomAccessFile.seek(dataSpec.position)
+                }
+                bytesRemaining =
+                    if (dataSpec.length == C.LENGTH_UNSET.toLong()) {
+                        length - dataSpec.position
+                    } else {
+                        dataSpec.length
+                    }
+                if (bytesRemaining < 0) {
+                    throw IOException("Invalid SMB data spec: negative remaining length")
+                }
+            } catch (e: Exception) {
+                close()
+                throw if (e is IOException) e else IOException(e)
             }
-        if (bytesRemaining < 0) {
-            throw IOException("Invalid SMB data spec: negative remaining length")
         }
         opened = true
         transferStarted(dataSpec)

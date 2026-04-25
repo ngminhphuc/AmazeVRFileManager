@@ -212,7 +212,7 @@ public class TextEditorActivity extends ThemedActivity
         new ViewModelProvider(this).get(TextEditorActivityViewModel.class);
 
     if (viewModel.getOriginal() != null
-        && mainTextView.isShown()
+        && (mainTextView.isShown() || markdownPreviewActive)
         && mainTextView.getText() != null
         && !viewModel.getOriginal().equals(mainTextView.getText().toString())) {
       new MaterialDialog.Builder(this)

@@ -673,7 +673,7 @@ public class FileUtils {
       intent.setType(MimeTypes.getMimeType(f.getPath(), false));
       intent.putExtra("path", f.getPath());
       mainActivity.startActivity(intent);
-    } else if (isVideoFile(f.getPath())) {
+    } else if (defaultHandler && isVideoFile(f.getPath())) {
       launchVrVideoPlayer(mainActivity, f);
     } else {
       try {
