@@ -141,7 +141,7 @@ public class ProcessViewerFragment extends Fragment {
     accentColor = mainActivity.getAccent();
 
     mainActivity.updateViews(
-        new ColorDrawable(MainActivity.currentTab == 1 ? skinTwoColor : skin_color));
+        new ColorDrawable(mainActivity.getActiveTabIndex() == 1 ? skinTwoColor : skin_color));
   }
 
   @Override

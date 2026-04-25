@@ -131,9 +131,11 @@ class PreferencesActivity : ThemedActivity(), FolderChooserDialog.FolderCallback
      * Used to update color
      */
     fun invalidateNavBar() {
+        // MainActivity is no longer a static field; fall back to the persisted preference so the
+        // nav bar color matches whichever tab was last active across all panels.
         val primaryColor =
             ColorPreferenceHelper
-                .getPrimary(currentColorPreference, MainActivity.currentTab)
+                .getPrimary(currentColorPreference, currentTab)
         if (Build.VERSION.SDK_INT == 20 || Build.VERSION.SDK_INT == 19) {
             val tintManager = SystemBarTintManager(this)
             tintManager.isStatusBarTintEnabled = true

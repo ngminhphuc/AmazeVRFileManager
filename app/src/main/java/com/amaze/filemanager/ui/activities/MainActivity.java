@@ -341,8 +341,15 @@ public class MainActivity extends PermissionsActivity
   public static final String CLOUD_AUTHENTICATOR_GDRIVE = "android.intent.category.BROWSABLE";
   public static final String CLOUD_AUTHENTICATOR_REDIRECT_URI = "com.amaze.filemanager:/auth";
 
-  // the current visible tab, either 0 or 1
-  public static int currentTab;
+  /**
+   * Index of the currently visible tab in this panel's TabFragment (either 0 or 1). Per-instance
+   * rather than static so that opening a second panel via MainActivityNewWindow on Meta Quest 3 /
+   * Android split-screen doesn't overwrite the primary panel's tab selection (which was causing
+   * cross-window theme / color corruption before). Use {@link #getActiveTabIndex()} and {@link
+   * #setActiveTabIndex(int)} to read / write.
+   */
+  private int activeTabIndex;
+
   private boolean listItemSelected = false;
 
   private String scrollToFileName = null;
@@ -1845,8 +1852,22 @@ public class MainActivity extends PermissionsActivity
   }
 
   void initialisePreferences() {
-    currentTab = getCurrentTab();
+    activeTabIndex = getCurrentTab();
     skinStatusBar = PreferenceUtils.getStatusColor(getPrimary());
+  }
+
+  /** Returns the currently selected tab index (0 or 1) for this MainActivity panel. */
+  public int getActiveTabIndex() {
+    return activeTabIndex;
+  }
+
+  /**
+   * Updates this panel's active tab index and persists it as the last-seen tab in shared
+   * preferences so the next fresh MainActivity launch restores the same tab.
+   */
+  public void setActiveTabIndex(int tab) {
+    this.activeTabIndex = tab;
+    getPrefs().edit().putInt(PreferencesConstants.PREFERENCE_CURRENT_TAB, tab).apply();
   }
 
   void initialiseViews() {
@@ -1881,7 +1902,7 @@ public class MainActivity extends PermissionsActivity
 
   /**
    * Call this method when you need to update the MainActivity view components' colors based on
-   * update in the {@link MainActivity#currentTab} Warning - All the variables should be initialised
+   * update in the {@link MainActivity#activeTabIndex} Warning - All the variables should be initialised
    * before calling this method!
    */
   public void updateViews(ColorDrawable colorDrawable) {
