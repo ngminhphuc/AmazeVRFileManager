@@ -218,7 +218,7 @@ class VrVideoPlayerActivity : AppCompatActivity() {
                 Regex("(^|[_\\-.\\s])180([_\\-.\\s]|$)") to Projection.EQUIRECT_180,
                 Regex("(^|[_\\-.\\s])vr360([_\\-.\\s]|$)") to Projection.EQUIRECT_360,
                 Regex("(^|[_\\-.\\s])360([_\\-.\\s]|$)") to Projection.EQUIRECT_360,
-                Regex("(equirect|equirectangular|sphere|spherical|ambisonic)") to Projection.EQUIRECT_360,
+                Regex("(^|[_\\-.\\s])(equirect|equirectangular|sphere|spherical|ambisonic)([_\\-.\\s]|$)") to Projection.EQUIRECT_360,
             )
         for ((regex, p) in matchers) {
             if (regex.containsMatchIn(name)) return p
