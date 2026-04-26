@@ -50,6 +50,7 @@ import com.amaze.filemanager.filesystem.cloud.CloudUtil;
 import com.amaze.filemanager.filesystem.compressed.CompressedHelper;
 import com.amaze.filemanager.ui.activities.DatabaseViewerActivity;
 import com.amaze.filemanager.ui.activities.MainActivity;
+import com.amaze.filemanager.ui.activities.Model3DViewerActivity;
 import com.amaze.filemanager.ui.activities.VrVideoPlayerActivity;
 import com.amaze.filemanager.ui.activities.superclasses.PermissionsActivity;
 import com.amaze.filemanager.ui.activities.superclasses.PreferenceActivity;
@@ -675,6 +676,8 @@ public class FileUtils {
       mainActivity.startActivity(intent);
     } else if (defaultHandler && isVideoFile(f.getPath())) {
       launchVrVideoPlayer(mainActivity, f);
+    } else if (defaultHandler && is3DModelFile(f.getPath())) {
+      launchModel3DViewer(mainActivity, f);
     } else {
       try {
         openFileDialogFragmentFor(f, mainActivity, useNewStack);
@@ -776,6 +779,34 @@ public class FileUtils {
       mainActivity.startActivity(intent);
     } catch (Exception e) {
       LOG.warn("Failed to launch VrVideoPlayerActivity, falling back to chooser", e);
+      openWith(file, mainActivity, false);
+    }
+  }
+
+  /**
+   * Returns true if the given path points to a glTF binary model (`.glb`). glTF text format
+   * (`.gltf`) is not yet supported because it requires resolving external buffers/textures.
+   */
+  public static boolean is3DModelFile(String path) {
+    if (path == null) return false;
+    String lower = path.toLowerCase();
+    return lower.endsWith(".glb");
+  }
+
+  /**
+   * Opens the given local file in the inline {@link Model3DViewerActivity}. Falls back to the
+   * standard open-file chooser if launching fails.
+   */
+  public static void launchModel3DViewer(@NonNull MainActivity mainActivity, @NonNull File file) {
+    try {
+      Uri uri = FileProvider.getUriForFile(mainActivity, mainActivity.getPackageName(), file);
+      Intent intent = new Intent(mainActivity, Model3DViewerActivity.class);
+      intent.setAction(Intent.ACTION_VIEW);
+      intent.setData(uri);
+      intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      mainActivity.startActivity(intent);
+    } catch (Exception e) {
+      LOG.warn("Failed to launch Model3DViewerActivity, falling back to chooser", e);
       openWith(file, mainActivity, false);
     }
   }

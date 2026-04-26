@@ -75,6 +75,7 @@ amazeTrashBin = "1.0.10"
 rustAndroidGradle = "0.9.6"
 media3 = "1.4.1"
 markwon = "4.6.2"
+filament = "1.51.6"
 
 [libraries]
 gradle = { module = "com.android.tools.build:gradle", version.ref = "gradle" }
@@ -179,6 +180,11 @@ media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = 
 media3-ui = { module = "androidx.media3:media3-ui", version.ref = "media3" }
 media3-datasource = { module = "androidx.media3:media3-datasource", version.ref = "media3" }
 media3-common = { module = "androidx.media3:media3-common", version.ref = "media3" }
+
+# Filament 3D renderer (Sprint 4 — glTF/GLB inline preview)
+filament-android = { module = "com.google.android.filament:filament-android", version.ref = "filament" }
+filament-utils-android = { module = "com.google.android.filament:filament-utils-android", version.ref = "filament" }
+filament-gltfio-android = { module = "com.google.android.filament:gltfio-android", version.ref = "filament" }
 
 # Markwon Markdown renderer for .md/.markdown preview
 markwon-core = { module = "io.noties.markwon:core", version.ref = "markwon" }

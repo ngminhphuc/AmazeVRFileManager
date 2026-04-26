@@ -271,6 +271,11 @@ dependencies {
     implementation libs.markwon.ext.tasklist
     implementation libs.markwon.linkify
     implementation libs.markwon.html
+
+    //Filament: PBR 3D renderer for inline glTF/GLB preview (Sprint 4)
+    implementation libs.filament.android
+    implementation libs.filament.utils.android
+    implementation libs.filament.gltfio.android
 }
 
 kotlin {

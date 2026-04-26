@@ -897,5 +897,10 @@ You only need to do this once, until the next time you select a new location for
     <string name="media_servers_unsupported">Item not supported in VR yet</string>
     <string name="media_servers_unknown">Server not found</string>
     <string name="remove">REMOVE</string>
+
+    <!-- Sprint 4: 3D model viewer -->
+    <string name="model3d_viewer">3D model</string>
+    <string name="model3d_load_failed">Failed to load 3D model</string>
+    <string name="model3d_only_glb">Only .glb (binary glTF) is supported. Convert .gltf or .obj first.</string>
 </resources>
 
