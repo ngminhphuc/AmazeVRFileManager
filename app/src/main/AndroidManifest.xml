@@ -242,6 +242,14 @@
             android:screenOrientation="sensorLandscape" />
 
         <activity
+            android:exported="false"
+            android:label="@string/model3d_viewer"
+            android:name=".ui.activities.Model3DViewerActivity"
+            android:theme="@style/appCompatBlack"
+            android:configChanges="uiMode|orientation|screenSize"
+            android:screenOrientation="sensorLandscape" />
+
+        <activity
             android:exported="true"
             android:label="@string/databasereader"
             android:name=".ui.activities.DatabaseViewerActivity"
