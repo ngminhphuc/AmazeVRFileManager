@@ -38,7 +38,7 @@
                 <color android:color="@color/grey_translucent"/>
             </item>
             <item android:state_focused="true">
-                <color android:color="@color/grey_translucent" />
+                <color android:color="@color/vr_focus_color" />
             </item>
         </selector>
     </item>

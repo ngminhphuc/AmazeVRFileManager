@@ -92,6 +92,11 @@
     <color name="grey">#ff666666</color>
     <color name="grey_translucent">#59666666</color>
 
+    <!-- Sprint 5: high-visibility VR focus indicator for Quest 3 D-pad / thumbstick
+         navigation. Distinct from the touch ripple (grey_translucent) so the user
+         can easily see which row has focus from a few meters away in a 2D panel. -->
+    <color name="vr_focus_color">#80FFB300</color>
+
     <color name="appsadapter_background">#5f33b5e5</color>
 
     <color name="text_disabled">#f6f6f6</color>
