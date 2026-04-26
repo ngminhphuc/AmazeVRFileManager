@@ -1518,10 +1518,15 @@ public class MainActivity extends PermissionsActivity
         return true;
       case KeyEvent.KEYCODE_BUTTON_X:
         // Quest 3 'X' button → toggle navigation drawer.
-        if (drawer.isOpen()) {
-          drawer.close();
-        } else {
-          drawer.open();
+        // Skip when the drawer is locked (e.g. tablet / dual-pane layout uses
+        // LOCK_MODE_LOCKED_OPEN — closing it programmatically would break the
+        // layout). Mirrors the guard used by onBackPressed above.
+        if (!drawer.isLocked()) {
+          if (drawer.isOpen()) {
+            drawer.close();
+          } else {
+            drawer.open();
+          }
         }
         return true;
       case KeyEvent.KEYCODE_BUTTON_Y:
