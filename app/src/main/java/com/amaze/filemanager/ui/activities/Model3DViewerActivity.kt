@@ -64,6 +64,7 @@ class Model3DViewerActivity : AppCompatActivity(), Choreographer.FrameCallback {
     private lateinit var choreographer: Choreographer
     private lateinit var modelViewer: ModelViewer
     private var sunLight: Int = 0
+    private var indirectLight: com.google.android.filament.IndirectLight? = null
     private var rendering: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -118,6 +119,17 @@ class Model3DViewerActivity : AppCompatActivity(), Choreographer.FrameCallback {
             EntityManager.get().destroy(sunLight)
             sunLight = 0
         }
+        indirectLight?.let {
+            modelViewer.scene.indirectLight = null
+            modelViewer.engine.destroyIndirectLight(it)
+            indirectLight = null
+        }
+        // ModelViewer doesn't expose a top-level destroy() — destroy the asset
+        // explicitly, then destroy the underlying Filament Engine, which
+        // recursively releases the renderer / view / scene / camera / swap
+        // chain that ModelViewer created.
+        modelViewer.destroyModel()
+        modelViewer.engine.destroy()
         super.onDestroy()
     }
 
@@ -155,11 +167,13 @@ class Model3DViewerActivity : AppCompatActivity(), Choreographer.FrameCallback {
                 0.0f, 0.0f, 0.0f, // L21
                 0.0f, 0.0f, 0.0f, // L22
             )
-        modelViewer.scene.indirectLight =
+        val ibl =
             com.google.android.filament.IndirectLight.Builder()
                 .irradiance(3, sh)
                 .intensity(30_000.0f)
                 .build(modelViewer.engine)
+        modelViewer.scene.indirectLight = ibl
+        indirectLight = ibl
     }
 
     private fun loadGlb(uri: Uri): Boolean {
