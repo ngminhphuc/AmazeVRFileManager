@@ -880,5 +880,22 @@ You only need to do this once, until the next time you select a new location for
     <string name="trash_bin_cleanup_interval_title">Cleanup interval</string>
     <string name="trash_bin_cleanup_interval_summary">Trigger auto-cleanup interval (hours)</string>
     <string name="file_deletion">File Deletion</string>
+    <string name="media_servers">Media Servers</string>
+    <string name="media_servers_add">Add server</string>
+    <string name="media_servers_empty">No media servers configured.\n\nTap + to connect to a Jellyfin, Emby or Plex server.</string>
+    <string name="media_servers_no_items">No items here.</string>
+    <string name="media_servers_field_name">Display name</string>
+    <string name="media_servers_field_url">Server URL (https://example.com:8096)</string>
+    <string name="media_servers_field_user">Username</string>
+    <string name="media_servers_field_pass">Password</string>
+    <string name="media_servers_connect">Connect</string>
+    <string name="media_servers_connecting">Connecting…</string>
+    <string name="media_servers_connected">Connected to %1$s</string>
+    <string name="media_servers_failed">Connection failed: %1$s</string>
+    <string name="media_servers_fill_all">Fill all fields</string>
+    <string name="media_servers_remove_prompt">Remove %1$s from your servers?</string>
+    <string name="media_servers_unsupported">Item not supported in VR yet</string>
+    <string name="media_servers_unknown">Server not found</string>
+    <string name="remove">REMOVE</string>
 </resources>
 
