@@ -124,12 +124,17 @@ class Model3DViewerActivity : AppCompatActivity(), Choreographer.FrameCallback {
             modelViewer.engine.destroyIndirectLight(it)
             indirectLight = null
         }
-        // ModelViewer doesn't expose a top-level destroy() — destroy the asset
-        // explicitly, then destroy the underlying Filament Engine, which
-        // recursively releases the renderer / view / scene / camera / swap
-        // chain that ModelViewer created.
+        // Free the loaded glTF asset (textures, vertex/index buffers, materials).
+        // We deliberately do NOT call engine.destroy() here: ModelViewer's
+        // internal UiHelper remains attached to the SurfaceView as a
+        // SurfaceHolder.Callback, and Android will fire surfaceDestroyed
+        // *after* this activity's onDestroy returns. UiHelper's callback then
+        // calls engine.destroySwapChain(), which would assert on an
+        // already-destroyed engine. Filament's official samples follow the
+        // same pattern (rely on process death for engine teardown). This is
+        // a single Engine retained per activity instance — acceptable for
+        // our use case.
         modelViewer.destroyModel()
-        modelViewer.engine.destroy()
         super.onDestroy()
     }
 
