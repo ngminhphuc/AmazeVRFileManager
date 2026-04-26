@@ -1495,6 +1495,102 @@ public class MainActivity extends PermissionsActivity
     return super.onKeyDown(keyCode, event);
   }
 
+  /**
+   * Sprint 5 — Quest 3 controller / Bluetooth keyboard navigation.
+   *
+   * <p>{@link #onKeyDown(int, KeyEvent)} above is reserved for the legacy MENU suppression. We hook
+   * gamepad and modifier-key shortcuts in {@link #dispatchKeyEvent(KeyEvent)} so they fire even
+   * when a focused EditText is eating regular keystrokes (Ctrl/Alt combinations + gamepad buttons
+   * are not EditText-relevant).
+   */
+  @Override
+  public boolean dispatchKeyEvent(KeyEvent event) {
+    if (event.getAction() != KeyEvent.ACTION_DOWN) {
+      return super.dispatchKeyEvent(event);
+    }
+    int code = event.getKeyCode();
+
+    // --- Gamepad / Quest 3 controller buttons ---
+    switch (code) {
+      case KeyEvent.KEYCODE_BUTTON_B:
+        // Quest 3 'B' / 'Y' button → back / up directory.
+        onBackPressed();
+        return true;
+      case KeyEvent.KEYCODE_BUTTON_X:
+        // Quest 3 'X' button → toggle navigation drawer.
+        // Skip when the drawer is locked (e.g. tablet / dual-pane layout uses
+        // LOCK_MODE_LOCKED_OPEN — closing it programmatically would break the
+        // layout). Mirrors the guard used by onBackPressed above.
+        if (!drawer.isLocked()) {
+          if (drawer.isOpen()) {
+            drawer.close();
+          } else {
+            drawer.open();
+          }
+        }
+        return true;
+      case KeyEvent.KEYCODE_BUTTON_Y:
+        // Quest 3 'Y' button → reveal the search field.
+        if (getAppbar() != null
+            && getAppbar().getSearchView() != null
+            && !getAppbar().getSearchView().isShown()) {
+          getAppbar().getSearchView().revealSearchView();
+        }
+        return true;
+      case KeyEvent.KEYCODE_BUTTON_L1:
+        // Left bumper → first tab.
+        if (getTabFragment() != null) {
+          getTabFragment().setCurrentItem(0);
+        }
+        return true;
+      case KeyEvent.KEYCODE_BUTTON_R1:
+        // Right bumper → second tab.
+        if (getTabFragment() != null) {
+          getTabFragment().setCurrentItem(1);
+        }
+        return true;
+      default:
+        // fall through to keyboard / default handling
+        break;
+    }
+
+    // --- Bluetooth keyboard shortcuts ---
+    if (event.isCtrlPressed()) {
+      switch (code) {
+        case KeyEvent.KEYCODE_F:
+          if (getAppbar() != null
+              && getAppbar().getSearchView() != null
+              && !getAppbar().getSearchView().isShown()) {
+            getAppbar().getSearchView().revealSearchView();
+          }
+          return true;
+        case KeyEvent.KEYCODE_TAB:
+          // Ctrl+Tab → cycle tabs.
+          if (getTabFragment() != null) {
+            int target = MainActivity.currentTab == 0 ? 1 : 0;
+            getTabFragment().setCurrentItem(target);
+          }
+          return true;
+        case KeyEvent.KEYCODE_W:
+          // Ctrl+W → close current activity (panel) — useful when running
+          // multiple windows from Sprint 2.
+          finish();
+          return true;
+        default:
+          break;
+      }
+    }
+
+    // Backspace as up-directory when nothing is taking text input.
+    if (code == KeyEvent.KEYCODE_DEL
+        && (getCurrentFocus() == null || !(getCurrentFocus() instanceof android.widget.EditText))) {
+      onBackPressed();
+      return true;
+    }
+
+    return super.dispatchKeyEvent(event);
+  }
+
   @Override
   protected void onDestroy() {
     super.onDestroy();

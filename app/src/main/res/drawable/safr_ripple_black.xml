@@ -32,7 +32,7 @@
         <color android:color="#424242" />
     </item>
     <item android:state_focused="true">
-        <color android:color="#424242" />
+        <color android:color="@color/vr_focus_color" />
     </item>
 
     <!--<item>
