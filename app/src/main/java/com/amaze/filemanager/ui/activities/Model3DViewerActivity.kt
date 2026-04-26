@@ -213,6 +213,10 @@ class Model3DViewerActivity : AppCompatActivity(), Choreographer.FrameCallback {
             LOG.error("loadGlb runtime failure", e)
             toastError(R.string.model3d_load_failed)
             false
+        } catch (e: OutOfMemoryError) {
+            LOG.error("loadGlb out of memory", e)
+            toastError(R.string.model3d_load_failed)
+            false
         }
     }
 
