@@ -21,28 +21,30 @@
 package com.amaze.filemanager.filesystem.mediaserver
 
 import android.content.Context
-import androidx.preference.PreferenceManager
+import android.content.SharedPreferences
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
 /**
  * JSON-backed persistence layer for the user's configured media servers.
  *
- * Backed by the default SharedPreferences (single key
- * [PREFERENCE_KEY_SERVERS]) holding the entire list as a JSON array. Tokens
- * are stored alongside their server entries; if higher security is required
- * in the future, swap to EncryptedSharedPreferences without changing the
- * public API.
+ * Stored in a dedicated, isolated SharedPreferences file
+ * ([PREFERENCE_FILE]) so that access tokens are NOT included in the
+ * settings-export feature (BackupPrefsFragment.exportPrefs() dumps the
+ * default SharedPreferences). If even stronger guarantees are needed,
+ * swap the underlying [prefs] for EncryptedSharedPreferences without
+ * changing the public API.
  */
 object MediaServerStorage {
+    private const val PREFERENCE_FILE = "media_servers_prefs"
     private const val PREFERENCE_KEY_SERVERS = "media_servers_json"
     private val gson = Gson()
     private val type = object : TypeToken<List<MediaServer>>() {}.type
 
+    private fun prefs(context: Context): SharedPreferences = context.getSharedPreferences(PREFERENCE_FILE, Context.MODE_PRIVATE)
+
     fun list(context: Context): List<MediaServer> {
-        val raw =
-            PreferenceManager.getDefaultSharedPreferences(context)
-                .getString(PREFERENCE_KEY_SERVERS, null) ?: return emptyList()
+        val raw = prefs(context).getString(PREFERENCE_KEY_SERVERS, null) ?: return emptyList()
         return runCatching { gson.fromJson<List<MediaServer>>(raw, type) }.getOrNull()
             ?: emptyList()
     }
@@ -51,7 +53,7 @@ object MediaServerStorage {
         context: Context,
         servers: List<MediaServer>,
     ) {
-        PreferenceManager.getDefaultSharedPreferences(context)
+        prefs(context)
             .edit()
             .putString(PREFERENCE_KEY_SERVERS, gson.toJson(servers))
             .apply()
