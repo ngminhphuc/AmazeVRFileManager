@@ -127,24 +127,27 @@ class MediaServersActivity : AppCompatActivity() {
         passInput.inputType =
             InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
 
-        AlertDialog.Builder(this)
-            .setTitle(R.string.media_servers_add)
-            .setView(view)
-            .setPositiveButton(R.string.media_servers_connect) { _, _ ->
-                val name = nameInput.text.toString().trim()
-                val url = urlInput.text.toString().trim()
-                val user = userInput.text.toString().trim()
-                val pass = passInput.text.toString()
-                val type = MediaServerType.values()[typeSpinner.selectedItemPosition]
-                if (name.isEmpty() || url.isEmpty() || user.isEmpty() || pass.isEmpty()) {
-                    Toast.makeText(this, R.string.media_servers_fill_all, Toast.LENGTH_SHORT)
-                        .show()
-                    return@setPositiveButton
-                }
-                authenticate(type, url, user, pass, name)
+        val dialog =
+            AlertDialog.Builder(this)
+                .setTitle(R.string.media_servers_add)
+                .setView(view)
+                .setPositiveButton(R.string.media_servers_connect, null)
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val name = nameInput.text.toString().trim()
+            val url = urlInput.text.toString().trim()
+            val user = userInput.text.toString().trim()
+            val pass = passInput.text.toString()
+            val type = MediaServerType.values()[typeSpinner.selectedItemPosition]
+            if (name.isEmpty() || url.isEmpty() || user.isEmpty() || pass.isEmpty()) {
+                Toast.makeText(this, R.string.media_servers_fill_all, Toast.LENGTH_SHORT)
+                    .show()
+                return@setOnClickListener
             }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            authenticate(type, url, user, pass, name)
+            dialog.dismiss()
+        }
     }
 
     private fun authenticate(

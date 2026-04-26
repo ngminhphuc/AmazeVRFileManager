@@ -82,8 +82,11 @@ object MediaServerClient {
         accessToken: String,
         userId: String?,
         displayName: String,
-    ): MediaServer =
-        MediaServer(
+    ): MediaServer {
+        require(type == MediaServerType.PLEX || userId != null) {
+            "userId is required for Jellyfin/Emby servers"
+        }
+        return MediaServer(
             id = UUID.randomUUID().toString(),
             name = displayName,
             type = type,
@@ -92,6 +95,7 @@ object MediaServerClient {
             accessToken = accessToken,
             userId = userId,
         )
+    }
 
     @Throws(Exception::class)
     private fun authenticateJellyfin(
