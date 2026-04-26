@@ -24,6 +24,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import java.util.UUID
 
 /**
  * JSON-backed persistence layer for the user's configured media servers.
@@ -38,10 +39,25 @@ import com.google.gson.reflect.TypeToken
 object MediaServerStorage {
     private const val PREFERENCE_FILE = "media_servers_prefs"
     private const val PREFERENCE_KEY_SERVERS = "media_servers_json"
+    private const val PREFERENCE_KEY_DEVICE_ID = "media_servers_device_id"
     private val gson = Gson()
     private val type = object : TypeToken<List<MediaServer>>() {}.type
 
     private fun prefs(context: Context): SharedPreferences = context.getSharedPreferences(PREFERENCE_FILE, Context.MODE_PRIVATE)
+
+    /**
+     * Returns a stable, per-installation device identifier used as the
+     * `DeviceId` / `X-Plex-Client-Identifier` when authenticating with media
+     * servers. Generated lazily on first call and persisted afterwards so
+     * that every install reports a distinct identity.
+     */
+    fun getOrCreateDeviceId(context: Context): String {
+        val p = prefs(context)
+        p.getString(PREFERENCE_KEY_DEVICE_ID, null)?.let { return it }
+        val id = "amaze-vr-fm-" + UUID.randomUUID().toString()
+        p.edit().putString(PREFERENCE_KEY_DEVICE_ID, id).apply()
+        return id
+    }
 
     fun list(context: Context): List<MediaServer> {
         val raw = prefs(context).getString(PREFERENCE_KEY_SERVERS, null) ?: return emptyList()

@@ -158,10 +158,11 @@ class MediaServersActivity : AppCompatActivity() {
         name: String,
     ) {
         Toast.makeText(this, R.string.media_servers_connecting, Toast.LENGTH_SHORT).show()
+        val deviceId = MediaServerStorage.getOrCreateDeviceId(this)
         executor.execute {
             val result =
                 runCatching {
-                    MediaServerClient.authenticate(type, url, user, pass, name)
+                    MediaServerClient.authenticate(type, url, user, pass, name, deviceId)
                 }
             runOnUiThread {
                 result.onSuccess {

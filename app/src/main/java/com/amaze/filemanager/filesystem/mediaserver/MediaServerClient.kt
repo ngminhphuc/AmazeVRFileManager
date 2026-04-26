@@ -41,7 +41,6 @@ import java.util.concurrent.TimeUnit
  */
 object MediaServerClient {
     private const val CLIENT_NAME = "AmazeVRFileManager"
-    private const val DEVICE_ID = "amaze-vr-fm"
     private const val PLEX_PRODUCT = "AmazeVRFileManager"
 
     private val http: OkHttpClient =
@@ -61,13 +60,14 @@ object MediaServerClient {
         username: String,
         password: String,
         displayName: String,
+        deviceId: String,
     ): MediaServer {
         val cleanUrl = baseUrl.trimEnd('/')
         return when (type) {
             MediaServerType.JELLYFIN, MediaServerType.EMBY ->
-                authenticateJellyfin(type, cleanUrl, username, password, displayName)
+                authenticateJellyfin(type, cleanUrl, username, password, displayName, deviceId)
             MediaServerType.PLEX ->
-                authenticatePlex(cleanUrl, username, password, displayName)
+                authenticatePlex(cleanUrl, username, password, displayName, deviceId)
         }
     }
 
@@ -104,10 +104,11 @@ object MediaServerClient {
         username: String,
         password: String,
         displayName: String,
+        deviceId: String,
     ): MediaServer {
         val authHeader =
             "MediaBrowser Client=\"$CLIENT_NAME\", " +
-                "Device=\"Quest3\", DeviceId=\"$DEVICE_ID\", Version=\"1.0\""
+                "Device=\"Quest3\", DeviceId=\"$deviceId\", Version=\"1.0\""
         val payload =
             JsonObject().apply {
                 addProperty("Username", username)
@@ -144,15 +145,15 @@ object MediaServerClient {
         username: String,
         password: String,
         displayName: String,
+        deviceId: String,
     ): MediaServer {
         val body =
             ("user[login]=${urlEncode(username)}&user[password]=${urlEncode(password)}")
                 .toRequestBody("application/x-www-form-urlencoded".toMediaType())
-        val clientId = DEVICE_ID
         val request =
             Request.Builder()
                 .url("https://plex.tv/users/sign_in.json")
-                .header("X-Plex-Client-Identifier", clientId)
+                .header("X-Plex-Client-Identifier", deviceId)
                 .header("X-Plex-Product", PLEX_PRODUCT)
                 .header("X-Plex-Version", "1.0")
                 .header("Accept", "application/json")
