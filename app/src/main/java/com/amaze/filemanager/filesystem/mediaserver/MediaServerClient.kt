@@ -20,6 +20,8 @@
 
 package com.amaze.filemanager.filesystem.mediaserver
 
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -102,9 +104,13 @@ object MediaServerClient {
         val authHeader =
             "MediaBrowser Client=\"$CLIENT_NAME\", " +
                 "Device=\"Quest3\", DeviceId=\"$DEVICE_ID\", Version=\"1.0\""
+        val payload =
+            JsonObject().apply {
+                addProperty("Username", username)
+                addProperty("Pw", password)
+            }
         val body =
-            "{\"Username\":\"${escape(username)}\",\"Pw\":\"${escape(password)}\"}"
-                .toRequestBody("application/json".toMediaType())
+            payload.toString().toRequestBody("application/json".toMediaType())
         val request =
             Request.Builder()
                 .url("$baseUrl/Users/AuthenticateByName")
@@ -267,10 +273,12 @@ object MediaServerClient {
                 .build()
         return http.newCall(req).execute().use { resp ->
             check(resp.isSuccessful) { "Sections failed: HTTP ${resp.code}" }
-            val arr =
+            val container =
                 JsonParser.parseString(resp.body!!.string())
                     .asJsonObject.getAsJsonObject("MediaContainer")
-                    .getAsJsonArray("Directory")
+            val arr =
+                container.takeIf { it.has("Directory") }
+                    ?.getAsJsonArray("Directory") ?: JsonArray()
             arr.map {
                 val o = it.asJsonObject
                 MediaItem(
@@ -348,8 +356,6 @@ object MediaServerClient {
             items
         }
     }
-
-    private fun escape(s: String) = s.replace("\\", "\\\\").replace("\"", "\\\"")
 
     private fun urlEncode(s: String) = java.net.URLEncoder.encode(s, "UTF-8")
 }
