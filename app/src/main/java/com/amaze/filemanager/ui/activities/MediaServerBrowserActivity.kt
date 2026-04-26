@@ -96,6 +96,11 @@ class MediaServerBrowserActivity : AppCompatActivity() {
         return true
     }
 
+    override fun onDestroy() {
+        executor.shutdownNow()
+        super.onDestroy()
+    }
+
     private fun load() {
         loading.visibility = View.VISIBLE
         emptyView.visibility = View.GONE

@@ -79,6 +79,11 @@ class MediaServersActivity : AppCompatActivity() {
         return true
     }
 
+    override fun onDestroy() {
+        executor.shutdownNow()
+        super.onDestroy()
+    }
+
     private fun refresh() {
         val list = MediaServerStorage.list(this)
         adapter.submit(list)

@@ -254,7 +254,8 @@ object MediaServerClient {
                     isVideo = isVideo,
                     mediaUrl =
                         if (isVideo) {
-                            "${server.url}/Videos/$id/stream?Static=true&api_key=${server.accessToken}"
+                            "${server.url}/Videos/$id/stream?Static=true" +
+                                "&api_key=${urlEncode(server.accessToken)}"
                         } else {
                             null
                         },
@@ -335,7 +336,7 @@ object MediaServerClient {
                             ?.asJsonObject?.get("key")?.asString
                     val streamUrl =
                         partKey?.let {
-                            "${server.url}$it?X-Plex-Token=${server.accessToken}"
+                            "${server.url}$it?X-Plex-Token=${urlEncode(server.accessToken)}"
                         }
                     items.add(
                         MediaItem(
