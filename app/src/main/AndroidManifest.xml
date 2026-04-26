@@ -224,6 +224,23 @@
                 <data android:mimeType="video/*" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:exported="false"
+            android:label="@string/media_servers"
+            android:name=".ui.activities.MediaServersActivity"
+            android:theme="@style/appCompatBlack"
+            android:configChanges="uiMode"
+            android:screenOrientation="sensorLandscape" />
+
+        <activity
+            android:exported="false"
+            android:label="@string/media_servers"
+            android:name=".ui.activities.MediaServerBrowserActivity"
+            android:theme="@style/appCompatBlack"
+            android:configChanges="uiMode"
+            android:screenOrientation="sensorLandscape" />
+
         <activity
             android:exported="true"
             android:label="@string/databasereader"

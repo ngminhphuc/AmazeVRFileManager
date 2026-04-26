@@ -1200,6 +1200,11 @@ public class MainActivity extends PermissionsActivity
     // If they have handled the options, we don't need to.
     if (getFragmentAtFrame().onOptionsItemSelected(item)) return true;
 
+    if (item.getItemId() == R.id.media_servers) {
+      startActivity(new Intent(this, MediaServersActivity.class));
+      return true;
+    }
+
     // Handle action buttons
     executeWithMainFragment(
         mainFragment -> {
