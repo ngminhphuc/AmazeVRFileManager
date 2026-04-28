@@ -142,13 +142,19 @@ class SmbServersActivity :
 
     private fun onSavedClick(entry: Array<String>) {
         // Browse: fire the encrypted SMB path back into MainActivity, which
-        // already knows how to navigate via mainFragment.loadlist().
+        // already knows how to navigate via mainFragment.loadlist(). Use
+        // CLEAR_TOP | SINGLE_TOP so the running instance receives the intent
+        // through onNewIntent — even though MainActivity is launchMode
+        // singleInstance and would route there anyway, the explicit flags
+        // are defensive against future launchMode changes and avoid the
+        // documented "standard launchMode + CLEAR_TOP without SINGLE_TOP =
+        // destroy & recreate" pitfall.
         startActivity(
             Intent(this, MainActivity::class.java).apply {
                 putExtra("path", entry[1])
                 addFlags(
-                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                        Intent.FLAG_ACTIVITY_CLEAR_TOP,
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP,
                 )
             },
         )
