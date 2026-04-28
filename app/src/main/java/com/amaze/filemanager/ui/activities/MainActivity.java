@@ -1205,6 +1205,11 @@ public class MainActivity extends PermissionsActivity
       return true;
     }
 
+    if (item.getItemId() == R.id.smb_servers) {
+      startActivity(new Intent(this, SmbServersActivity.class));
+      return true;
+    }
+
     // Handle action buttons
     executeWithMainFragment(
         mainFragment -> {
@@ -2149,7 +2154,23 @@ public class MainActivity extends PermissionsActivity
     path = i.getStringExtra("path");
 
     if (path != null) {
-      if (new File(path).isDirectory()) {
+      // Network paths (SMB / SFTP / FTP[S]) are not regular File paths and
+      // their isDirectory() check would always be false, falling through to
+      // FileUtils.openFile which fails for non-local URIs. Route them straight
+      // to MainFragment.loadlist with OpenMode.UNKNOWN so the existing
+      // openMode resolution kicks in. This is what enables external callers
+      // (e.g. SmbServersActivity) to "open this server" via Intent.
+      if (path.startsWith("smb://")
+          || path.startsWith("ssh://")
+          || path.startsWith("ftp://")
+          || path.startsWith("ftps://")) {
+        final MainFragment mainFragment = getCurrentMainFragment();
+        if (mainFragment != null) {
+          mainFragment.loadlist(path, false, OpenMode.UNKNOWN, true);
+        } else {
+          goToMain(path);
+        }
+      } else if (new File(path).isDirectory()) {
         final MainFragment mainFragment = getCurrentMainFragment();
         if (mainFragment != null) {
           mainFragment.loadlist(path, false, OpenMode.FILE, true);

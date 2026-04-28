@@ -235,6 +235,14 @@
 
         <activity
             android:exported="false"
+            android:label="@string/smb_servers"
+            android:name=".ui.activities.SmbServersActivity"
+            android:theme="@style/appCompatBlack"
+            android:configChanges="uiMode"
+            android:screenOrientation="sensorLandscape" />
+
+        <activity
+            android:exported="false"
             android:label="@string/media_servers"
             android:name=".ui.activities.MediaServerBrowserActivity"
             android:theme="@style/appCompatBlack"

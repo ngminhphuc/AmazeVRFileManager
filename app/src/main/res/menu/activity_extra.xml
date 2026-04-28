@@ -49,6 +49,10 @@
         android:icon="@drawable/ic_settings_remote_white_24dp"
         app:showAsAction="never"
         android:title="@string/media_servers"/>
+    <item android:id="@+id/smb_servers"
+        android:icon="@drawable/ic_settings_remote_white_24dp"
+        app:showAsAction="never"
+        android:title="@string/smb_servers"/>
     <item
         android:id="@+id/view"
         android:title=""/>
