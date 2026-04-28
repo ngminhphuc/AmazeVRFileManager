@@ -820,6 +820,10 @@ You only need to do this once, until the next time you select a new location for
     <string name="vr_video_projection_flat">Flat (2D)</string>
     <string name="vr_video_projection_360">360° equirectangular</string>
     <string name="vr_video_projection_180">180° VR (hemispherical)</string>
+    <string name="vr_video_stereo">Stereo layout</string>
+    <string name="vr_video_stereo_mono">Mono (no crop)</string>
+    <string name="vr_video_stereo_sbs">Side-by-Side (left half)</string>
+    <string name="vr_video_stereo_ou">Over-Under (top half)</string>
     <string name="markdown_preview">Markdown preview</string>
     <string name="markdown_edit">Edit markdown</string>
     <string name="pdf_viewer">Amaze Document Viewer</string>

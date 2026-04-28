@@ -35,7 +35,7 @@
         android:focusableInTouchMode="true"
         app:resize_mode="fit"
         app:show_buffering="when_playing"
-        app:surface_type="surface_view"
+        app:surface_type="texture_view"
         app:use_controller="true" />
 
     <!-- Spherical (360 / 180 / VR180) player surface. Hidden by default; swapped in

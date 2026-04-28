@@ -40,4 +40,24 @@
             </group>
         </menu>
     </item>
+    <item
+        android:id="@+id/vr_stereo_menu"
+        android:title="@string/vr_video_stereo"
+        app:showAsAction="always">
+        <menu>
+            <group
+                android:id="@+id/vr_stereo_group"
+                android:checkableBehavior="single">
+                <item
+                    android:id="@+id/vr_stereo_mono"
+                    android:title="@string/vr_video_stereo_mono" />
+                <item
+                    android:id="@+id/vr_stereo_sbs"
+                    android:title="@string/vr_video_stereo_sbs" />
+                <item
+                    android:id="@+id/vr_stereo_ou"
+                    android:title="@string/vr_video_stereo_ou" />
+            </group>
+        </menu>
+    </item>
 </menu>
