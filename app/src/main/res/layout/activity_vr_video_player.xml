@@ -26,14 +26,32 @@
     android:background="@android:color/black"
     android:keepScreenOn="true">
 
+    <!-- Flat (standard) player surface. Used by default for regular 2D videos. -->
     <androidx.media3.ui.PlayerView
-        android:id="@+id/vr_player_view"
+        android:id="@+id/vr_player_view_flat"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:focusable="true"
         android:focusableInTouchMode="true"
         app:resize_mode="fit"
         app:show_buffering="when_playing"
+        app:surface_type="texture_view"
+        app:use_controller="true" />
+
+    <!-- Spherical (360 / 180 / VR180) player surface. Hidden by default; swapped in
+         when the user selects a spherical projection mode in the menu. Media3
+         natively supports spherical rendering inside PlayerView via
+         surface_type="spherical_gl_surface_view". -->
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/vr_player_view_spherical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:visibility="gone"
+        app:resize_mode="fit"
+        app:show_buffering="when_playing"
+        app:surface_type="spherical_gl_surface_view"
         app:use_controller="true" />
 
     <ProgressBar
@@ -43,4 +61,17 @@
         android:layout_gravity="center"
         android:indeterminate="true"
         android:visibility="gone" />
+
+    <!-- Translucent toolbar overlaid on top of the video. Hosts the projection
+         menu (Flat / 360° / 180°) and the back/up button. Kept visible so the
+         menu is always reachable; the PlayerView's own controller auto-hides
+         after inactivity and occupies the bottom half of the screen. -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/vr_player_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:layout_gravity="top"
+        android:background="#80000000"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
 </FrameLayout>
