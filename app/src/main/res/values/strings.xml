@@ -844,6 +844,11 @@ You only need to do this once, until the next time you select a new location for
     <string name="smb_servers_test_connecting">Testing SMB connection…</string>
     <string name="smb_servers_test_ok">Connection OK.</string>
     <string name="smb_servers_test_failed">Connection failed: %1$s</string>
+    <string name="smb_version_label">SMB protocol version</string>
+    <string name="smb_version_auto">Auto (SMB2/3, recommended)</string>
+    <string name="smb_version_smb1">Force SMB1 (legacy, insecure)</string>
+    <string name="smb_version_smb2">Force SMB2 (2.02 / 2.10)</string>
+    <string name="smb_version_smb3">Force SMB3 (3.0 / 3.1.1)</string>
     <string name="markdown_preview">Markdown preview</string>
     <string name="markdown_edit">Edit markdown</string>
     <string name="pdf_viewer">Amaze Document Viewer</string>

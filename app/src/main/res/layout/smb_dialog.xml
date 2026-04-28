@@ -106,8 +106,36 @@
 
     <androidx.appcompat.widget.AppCompatTextView
         android:layout_width="wrap_content"
-        android:id="@+id/wanthelp"
         android:layout_height="wrap_content"
-        android:text="@string/want_help"
-        />
+        android:layout_marginTop="8dp"
+        android:text="@string/smb_version_label"
+        android:textAppearance="?android:attr/textAppearanceSmall" />
+    <androidx.appcompat.widget.AppCompatSpinner
+        android:id="@+id/smbVersionSpinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:entries="@array/smb_versions"
+        android:minHeight="48dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <androidx.appcompat.widget.AppCompatTextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:id="@+id/wanthelp"
+            android:text="@string/want_help" />
+        <Button
+            android:id="@+id/btnTestConnection"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:focusable="true"
+            android:minHeight="48dp"
+            android:text="@string/smb_servers_action_test" />
+    </LinearLayout>
 </LinearLayout>

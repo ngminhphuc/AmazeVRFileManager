@@ -30,7 +30,7 @@ import com.amaze.filemanager.filesystem.ftp.NetCopyConnectionInfo
 import com.amaze.filemanager.filesystem.ftp.NetCopyConnectionInfo.Companion.AT
 import com.amaze.filemanager.filesystem.ftp.NetCopyConnectionInfo.Companion.COLON
 import com.amaze.filemanager.filesystem.ftp.NetCopyConnectionInfo.Companion.QUESTION_MARK
-import com.amaze.filemanager.filesystem.smb.CifsContexts.createWithDisableIpcSigningCheck
+import com.amaze.filemanager.filesystem.smb.CifsContexts
 import com.amaze.filemanager.utils.PasswordUtil
 import com.amaze.filemanager.utils.urlDecoded
 import io.reactivex.Single
@@ -52,6 +52,9 @@ object SmbUtil {
     private val LOG = LoggerFactory.getLogger(SmbUtil::class.java)
 
     const val PARAM_DISABLE_IPC_SIGNING_CHECK = "disableIpcSigningCheck"
+
+    /** SMB protocol pin: "SMB1", "SMB2", "SMB3" or absent/"AUTO" for default negotiation. */
+    const val PARAM_SMB_VERSION = "smbVersion"
 
     /** Parse path to decrypt smb password  */
     @JvmStatic
@@ -119,11 +122,12 @@ object SmbUtil {
             uri.getQueryParameter(
                 PARAM_DISABLE_IPC_SIGNING_CHECK,
             ).toBoolean()
+        val smbVersion = uri.getQueryParameter(PARAM_SMB_VERSION)
 
         val userInfo = uri.userInfo
         return SmbFile(
             if (path.indexOf('?') < 0) path else path.substring(0, path.indexOf('?')),
-            createWithDisableIpcSigningCheck(path, disableIpcSigningCheck)
+            CifsContexts.createWithExtras(path, disableIpcSigningCheck, smbVersion)
                 .withCredentials(createFrom(userInfo)),
         )
     }

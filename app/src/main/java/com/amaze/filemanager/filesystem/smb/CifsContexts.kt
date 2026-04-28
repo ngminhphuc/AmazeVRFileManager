@@ -64,13 +64,41 @@ object CifsContexts {
         basePath: String,
         disableIpcSigningCheck: Boolean,
     ): BaseContext {
-        return if (disableIpcSigningCheck) {
-            val extraProperties = Properties()
-            extraProperties["jcifs.smb.client.ipcSigningEnforced"] = "false"
-            create(basePath, extraProperties)
-        } else {
-            create(basePath, null)
+        return createWithExtras(basePath, disableIpcSigningCheck, null)
+    }
+
+    /**
+     * Like [createWithDisableIpcSigningCheck] but also accepts an optional
+     * SMB protocol pin (`SMB1`, `SMB2`, `SMB3` or `null`/`AUTO` for jcifs
+     * default negotiation). Mapped to jcifs `DialectVersion` ranges so the
+     * client never silently downgrades or refuses to talk to older NAS.
+     */
+    @JvmStatic
+    fun createWithExtras(
+        basePath: String,
+        disableIpcSigningCheck: Boolean,
+        smbVersion: String?,
+    ): BaseContext {
+        val extra = Properties()
+        if (disableIpcSigningCheck) {
+            extra["jcifs.smb.client.ipcSigningEnforced"] = "false"
         }
+        when (smbVersion?.uppercase()) {
+            "SMB1" -> {
+                extra["jcifs.smb.client.minVersion"] = "SMB1"
+                extra["jcifs.smb.client.maxVersion"] = "SMB1"
+            }
+            "SMB2" -> {
+                extra["jcifs.smb.client.minVersion"] = "SMB202"
+                extra["jcifs.smb.client.maxVersion"] = "SMB210"
+            }
+            "SMB3" -> {
+                extra["jcifs.smb.client.minVersion"] = "SMB300"
+                extra["jcifs.smb.client.maxVersion"] = "SMB311"
+            }
+            // null, blank, or "AUTO" leaves jcifs defaults intact.
+        }
+        return if (extra.isEmpty) create(basePath, null) else create(basePath, extra)
     }
 
     @JvmStatic

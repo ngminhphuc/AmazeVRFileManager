@@ -26,6 +26,7 @@ import static com.amaze.filemanager.filesystem.ftp.NetCopyConnectionInfo.COLON;
 import static com.amaze.filemanager.filesystem.ftp.NetCopyConnectionInfo.SLASH;
 import static com.amaze.filemanager.filesystem.smb.CifsContexts.SMB_URI_PREFIX;
 import static com.amaze.filemanager.utils.smb.SmbUtil.PARAM_DISABLE_IPC_SIGNING_CHECK;
+import static com.amaze.filemanager.utils.smb.SmbUtil.PARAM_SMB_VERSION;
 import static java.net.URLDecoder.decode;
 import static java.net.URLEncoder.encode;
 
@@ -34,6 +35,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +63,7 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
+import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -67,6 +71,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.widget.AppCompatCheckBox;
 import androidx.appcompat.widget.AppCompatEditText;
+import androidx.appcompat.widget.AppCompatSpinner;
 import androidx.appcompat.widget.AppCompatTextView;
 import androidx.fragment.app.DialogFragment;
 
@@ -95,6 +100,7 @@ public class SmbConnectDialog extends DialogFragment {
   private String emptyName;
   private String invalidDomain;
   private String invalidUsername;
+  private final ExecutorService testExecutor = Executors.newSingleThreadExecutor();
 
   public interface SmbConnectionListener {
 
@@ -224,6 +230,8 @@ public class SmbConnectDialog extends DialogFragment {
     final AppCompatEditText pass = binding.passwordET;
     final AppCompatCheckBox chkSmbAnonymous = binding.chkSmbAnonymous;
     final AppCompatCheckBox chkSmbDisableIpcSignature = binding.chkSmbDisableIpcSignature;
+    final AppCompatSpinner smbVersionSpinner = binding.smbVersionSpinner;
+    final Button btnTestConnection = binding.btnTestConnection;
     AppCompatTextView help = binding.wanthelp;
 
     EditTextColorStateUtil.setTint(getActivity(), conName, accentColor);
@@ -293,6 +301,10 @@ public class SmbConnectDialog extends DialogFragment {
           chkSmbDisableIpcSignature.setChecked(
               Boolean.parseBoolean(sanitizer.getValue(PARAM_DISABLE_IPC_SIGNING_CHECK)));
         }
+        if (sanitizer.hasParameter(PARAM_SMB_VERSION)) {
+          smbVersionSpinner.setSelection(
+              versionCodeToSpinnerIndex(sanitizer.getValue(PARAM_SMB_VERSION)));
+        }
       } catch (UnsupportedEncodingException | IllegalArgumentException e) {
         LOG.warn("failed to load smb dialog info for path {}", path, e);
       } catch (MalformedURLException e) {
@@ -361,6 +373,12 @@ public class SmbConnectDialog extends DialogFragment {
           StringBuilder extraParams = new StringBuilder();
           if (chkSmbDisableIpcSignature.isChecked())
             extraParams.append(PARAM_DISABLE_IPC_SIGNING_CHECK).append('=').append(true);
+          String smbVersionCode =
+              spinnerIndexToVersionCode(smbVersionSpinner.getSelectedItemPosition());
+          if (!"AUTO".equals(smbVersionCode)) {
+            if (extraParams.length() > 0) extraParams.append('&');
+            extraParams.append(PARAM_SMB_VERSION).append('=').append(smbVersionCode);
+          }
 
           try {
             s =
@@ -391,7 +409,153 @@ public class SmbConnectDialog extends DialogFragment {
         });
     ba3.onNeutral((dialog, which) -> dismiss());
 
+    btnTestConnection.setOnClickListener(
+        v ->
+            performTestConnection(
+                ip,
+                share,
+                domain,
+                user,
+                pass,
+                chkSmbAnonymous,
+                chkSmbDisableIpcSignature,
+                smbVersionSpinner));
+
     return ba3.build();
+  }
+
+  /**
+   * Build an SMB URL from current form state and verify it on a background thread. Toasts the
+   * result; never persists. Used by the in-dialog "Test connection" button so the user can validate
+   * creds before saving.
+   */
+  private void performTestConnection(
+      AppCompatEditText ip,
+      AppCompatEditText share,
+      AppCompatEditText domain,
+      AppCompatEditText user,
+      AppCompatEditText pass,
+      AppCompatCheckBox chkSmbAnonymous,
+      AppCompatCheckBox chkSmbDisableIpcSignature,
+      AppCompatSpinner smbVersionSpinner) {
+    final Context appCtx = requireContext().getApplicationContext();
+    String ipa = ip.getText().toString();
+    if (TextUtils.isEmpty(ipa)) {
+      Toast.makeText(appCtx, emptyAddress, Toast.LENGTH_SHORT).show();
+      return;
+    }
+    String sShare = share.getText().toString();
+    String sDomain = domain.getText().toString();
+    boolean anon =
+        chkSmbAnonymous.isChecked()
+            || (TextUtils.isEmpty(user.getText()) && TextUtils.isEmpty(pass.getText()));
+    SmbFile smbFile;
+    if (anon) {
+      smbFile =
+          createSMBPath(
+              new String[] {ipa, "", "", sDomain, sShare},
+              true,
+              chkSmbDisableIpcSignature.isChecked());
+    } else {
+      String useru = user.getText().toString().replaceAll(" ", "\\ ");
+      smbFile =
+          createSMBPath(
+              new String[] {ipa, useru, pass.getText().toString(), sDomain, sShare},
+              false,
+              chkSmbDisableIpcSignature.isChecked());
+    }
+    if (smbFile == null) {
+      Toast.makeText(appCtx, R.string.error, Toast.LENGTH_SHORT).show();
+      return;
+    }
+    // Capture all View state on the UI thread before handing off to the
+    // executor; the lambda must not touch any View afterwards.
+    final boolean disableIpcSign = chkSmbDisableIpcSignature.isChecked();
+    final String smbVersionCode =
+        spinnerIndexToVersionCode(smbVersionSpinner.getSelectedItemPosition());
+
+    // Append IPC + version params into the URL so the CifsContexts cache key
+    // distinguishes between, e.g., the same host probed with SMB1 vs SMB3.
+    // SmbUtil.create then re-reads them in a path identical to production save.
+    StringBuilder testQuery = new StringBuilder();
+    if (disableIpcSign) {
+      testQuery.append(PARAM_DISABLE_IPC_SIGNING_CHECK).append('=').append(true);
+    }
+    if (!"AUTO".equals(smbVersionCode)) {
+      if (testQuery.length() > 0) testQuery.append('&');
+      testQuery.append(PARAM_SMB_VERSION).append('=').append(smbVersionCode);
+    }
+    final String rawTestPath = smbFile.getPath() + (testQuery.length() == 0 ? "" : "?" + testQuery);
+    // SmbUtil.create internally calls getSmbDecryptedPath, which expects the
+    // password segment to be AES-encrypted (the form persisted SMB entries
+    // always have). createSMBPath above only URL-encodes the password, so we
+    // must encrypt it now to match the contract — otherwise decryptPassword
+    // throws GeneralSecurityException on every authenticated test.
+    final String testPath;
+    try {
+      testPath = SmbUtil.getSmbEncryptedPath(appCtx, rawTestPath);
+    } catch (Exception e) {
+      LOG.warn("Failed to encrypt SMB test path", e);
+      Toast.makeText(appCtx, R.string.error, Toast.LENGTH_SHORT).show();
+      return;
+    }
+
+    Toast.makeText(appCtx, R.string.smb_servers_test_connecting, Toast.LENGTH_SHORT).show();
+    testExecutor.execute(
+        () -> {
+          String error = null;
+          try {
+            // SmbUtil.create handles query-string parsing (incl. SMB version)
+            // and Uri-driven user-info decoding, mirroring the production path
+            // exactly so test results match what users will see post-save.
+            SmbFile probe = SmbUtil.create(testPath);
+            // exists() exercises the SMB session/auth path; boolean return is
+            // irrelevant — only a thrown exception means failure.
+            probe.exists();
+          } catch (Throwable t) {
+            LOG.warn("SMB test connection failed", t);
+            error = t.getMessage() != null ? t.getMessage() : t.getClass().getSimpleName();
+          }
+          final String finalError = error;
+          // Snapshot getActivity() once: subsequent calls can race with
+          // fragment detach and flip non-null → null between checks.
+          final androidx.fragment.app.FragmentActivity activity = getActivity();
+          if (activity != null && !activity.isFinishing()) {
+            activity.runOnUiThread(
+                () -> {
+                  if (finalError == null) {
+                    Toast.makeText(appCtx, R.string.smb_servers_test_ok, Toast.LENGTH_LONG).show();
+                  } else {
+                    Toast.makeText(
+                            appCtx,
+                            appCtx.getString(R.string.smb_servers_test_failed, finalError),
+                            Toast.LENGTH_LONG)
+                        .show();
+                  }
+                });
+          }
+        });
+  }
+
+  private int versionCodeToSpinnerIndex(@Nullable String code) {
+    if (code == null) return 0;
+    String[] codes = getResources().getStringArray(R.array.smb_versions_codes);
+    for (int i = 0; i < codes.length; i++) {
+      if (codes[i].equalsIgnoreCase(code)) return i;
+    }
+    return 0;
+  }
+
+  private String spinnerIndexToVersionCode(int index) {
+    String[] codes = getResources().getStringArray(R.array.smb_versions_codes);
+    if (index < 0 || index >= codes.length) return "AUTO";
+    return codes[index];
+  }
+
+  @Override
+  public void onDestroyView() {
+    testExecutor.shutdownNow();
+    super.onDestroyView();
   }
 
   // Begin URL building, hence will need to URL encode credentials here, to begin with.
