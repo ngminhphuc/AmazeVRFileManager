@@ -468,23 +468,34 @@ public class SmbConnectDialog extends DialogFragment {
       Toast.makeText(appCtx, R.string.error, Toast.LENGTH_SHORT).show();
       return;
     }
-    String basePath = smbFile.getPath();
-    String smbVersionCode = spinnerIndexToVersionCode(smbVersionSpinner.getSelectedItemPosition());
+    // Capture all View state on the UI thread before handing off to the
+    // executor; the lambda must not touch any View afterwards.
+    final boolean disableIpcSign = chkSmbDisableIpcSignature.isChecked();
+    final String smbVersionCode =
+        spinnerIndexToVersionCode(smbVersionSpinner.getSelectedItemPosition());
+
+    // Append IPC + version params into the URL so the CifsContexts cache key
+    // distinguishes between, e.g., the same host probed with SMB1 vs SMB3.
+    // SmbUtil.create then re-reads them in a path identical to production save.
+    StringBuilder testQuery = new StringBuilder();
+    if (disableIpcSign) {
+      testQuery.append(PARAM_DISABLE_IPC_SIGNING_CHECK).append('=').append(true);
+    }
+    if (!"AUTO".equals(smbVersionCode)) {
+      if (testQuery.length() > 0) testQuery.append('&');
+      testQuery.append(PARAM_SMB_VERSION).append('=').append(smbVersionCode);
+    }
+    final String testPath = smbFile.getPath() + (testQuery.length() == 0 ? "" : "?" + testQuery);
+
     Toast.makeText(appCtx, R.string.smb_servers_test_connecting, Toast.LENGTH_SHORT).show();
     testExecutor.execute(
         () -> {
           String error = null;
           try {
-            // Build a fresh SmbFile so the chosen SMB version actually applies
-            // (createSMBPath above goes via createWithDisableIpcSigningCheck and
-            // does not pin a dialect).
-            SmbFile probe =
-                new SmbFile(
-                    basePath,
-                    CifsContexts.createWithExtras(
-                            basePath, chkSmbDisableIpcSignature.isChecked(), smbVersionCode)
-                        .withCredentials(
-                            SmbUtil.INSTANCE.createFrom(stripUserInfoFromPath(basePath))));
+            // SmbUtil.create handles query-string parsing (incl. SMB version)
+            // and Uri-driven user-info decoding, mirroring the production path
+            // exactly so test results match what users will see post-save.
+            SmbFile probe = SmbUtil.create(testPath);
             // exists() exercises the SMB session/auth path; boolean return is
             // irrelevant — only a thrown exception means failure.
             probe.exists();
@@ -510,20 +521,6 @@ public class SmbConnectDialog extends DialogFragment {
                     });
           }
         });
-  }
-
-  /**
-   * Extract the URL-encoded userinfo segment from an `smb://user:pass@host/...` URL. Returns the
-   * raw segment (still URL-encoded) so it can be fed back to jcifs's NTLM authenticator factory
-   * which expects encoded bytes.
-   */
-  @Nullable
-  private static String stripUserInfoFromPath(String path) {
-    int schemeEnd = path.indexOf("://");
-    if (schemeEnd < 0) return null;
-    int at = path.indexOf('@', schemeEnd + 3);
-    if (at < 0) return null;
-    return path.substring(schemeEnd + 3, at);
   }
 
   private int versionCodeToSpinnerIndex(@Nullable String code) {
