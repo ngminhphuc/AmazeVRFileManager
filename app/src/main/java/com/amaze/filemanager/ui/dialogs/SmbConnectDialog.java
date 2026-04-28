@@ -485,7 +485,20 @@ public class SmbConnectDialog extends DialogFragment {
       if (testQuery.length() > 0) testQuery.append('&');
       testQuery.append(PARAM_SMB_VERSION).append('=').append(smbVersionCode);
     }
-    final String testPath = smbFile.getPath() + (testQuery.length() == 0 ? "" : "?" + testQuery);
+    final String rawTestPath = smbFile.getPath() + (testQuery.length() == 0 ? "" : "?" + testQuery);
+    // SmbUtil.create internally calls getSmbDecryptedPath, which expects the
+    // password segment to be AES-encrypted (the form persisted SMB entries
+    // always have). createSMBPath above only URL-encodes the password, so we
+    // must encrypt it now to match the contract — otherwise decryptPassword
+    // throws GeneralSecurityException on every authenticated test.
+    final String testPath;
+    try {
+      testPath = SmbUtil.getSmbEncryptedPath(appCtx, rawTestPath);
+    } catch (Exception e) {
+      LOG.warn("Failed to encrypt SMB test path", e);
+      Toast.makeText(appCtx, R.string.error, Toast.LENGTH_SHORT).show();
+      return;
+    }
 
     Toast.makeText(appCtx, R.string.smb_servers_test_connecting, Toast.LENGTH_SHORT).show();
     testExecutor.execute(
@@ -504,21 +517,22 @@ public class SmbConnectDialog extends DialogFragment {
             error = t.getMessage() != null ? t.getMessage() : t.getClass().getSimpleName();
           }
           final String finalError = error;
-          if (getActivity() != null && !getActivity().isFinishing()) {
-            getActivity()
-                .runOnUiThread(
-                    () -> {
-                      if (finalError == null) {
-                        Toast.makeText(appCtx, R.string.smb_servers_test_ok, Toast.LENGTH_LONG)
-                            .show();
-                      } else {
-                        Toast.makeText(
-                                appCtx,
-                                getString(R.string.smb_servers_test_failed, finalError),
-                                Toast.LENGTH_LONG)
-                            .show();
-                      }
-                    });
+          // Snapshot getActivity() once: subsequent calls can race with
+          // fragment detach and flip non-null → null between checks.
+          final androidx.fragment.app.FragmentActivity activity = getActivity();
+          if (activity != null && !activity.isFinishing()) {
+            activity.runOnUiThread(
+                () -> {
+                  if (finalError == null) {
+                    Toast.makeText(appCtx, R.string.smb_servers_test_ok, Toast.LENGTH_LONG).show();
+                  } else {
+                    Toast.makeText(
+                            appCtx,
+                            appCtx.getString(R.string.smb_servers_test_failed, finalError),
+                            Toast.LENGTH_LONG)
+                        .show();
+                  }
+                });
           }
         });
   }
