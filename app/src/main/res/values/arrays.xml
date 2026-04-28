@@ -78,4 +78,18 @@
         <item>@string/protocol_ftps</item>
     </string-array>
 
+    <!-- Display labels for SMB protocol pin spinner; index maps to PARAM_SMB_VERSION code in smb_versions_codes. -->
+    <string-array name="smb_versions">
+        <item>@string/smb_version_auto</item>
+        <item>@string/smb_version_smb1</item>
+        <item>@string/smb_version_smb2</item>
+        <item>@string/smb_version_smb3</item>
+    </string-array>
+    <string-array name="smb_versions_codes" translatable="false">
+        <item>AUTO</item>
+        <item>SMB1</item>
+        <item>SMB2</item>
+        <item>SMB3</item>
+    </string-array>
+
 </resources>
