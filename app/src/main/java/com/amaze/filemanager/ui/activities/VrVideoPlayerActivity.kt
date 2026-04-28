@@ -353,13 +353,15 @@ class VrVideoPlayerActivity : AppCompatActivity() {
             listOf(
                 Regex("(^|[_\\-.\\s])sbs([_\\-.\\s]|$)"),
                 Regex("(^|[_\\-.\\s])lr([_\\-.\\s]|$)"),
-                Regex("(^|[_\\-.\\s])tab([_\\-.\\s]|$)"),
                 Regex("(^|[_\\-.\\s])3d([_\\-.\\s]|$)"),
             )
+        // "TAB" = Top-And-Bottom is a widely used synonym for Over-Under,
+        // so it belongs here, not in the SBS list.
         val ouMatchers =
             listOf(
                 Regex("(^|[_\\-.\\s])ou([_\\-.\\s]|$)"),
                 Regex("(^|[_\\-.\\s])tb([_\\-.\\s]|$)"),
+                Regex("(^|[_\\-.\\s])tab([_\\-.\\s]|$)"),
             )
         if (ouMatchers.any { it.containsMatchIn(name) }) return Stereo.OU
         if (sbsMatchers.any { it.containsMatchIn(name) }) return Stereo.SBS
