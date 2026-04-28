@@ -231,10 +231,15 @@ class VrVideoPlayerActivity : AppCompatActivity() {
 
                 override fun onVideoSizeChanged(videoSize: VideoSize) {
                     lastVideoSize = videoSize
-                    // PlayerView's own listener has already (re)sized the
-                    // content frame to the raw video aspect; re-apply our
-                    // stereo correction so the cropped half ends up at 16:9.
-                    applyStereo()
+                    // Our listener is registered before PlayerView attaches its
+                    // own (which happens when flatPlayerView.player is set in
+                    // applyProjection), so ExoPlayer dispatches to us first and
+                    // PlayerView's internal listener resets the content frame
+                    // aspect to the raw video aspect afterwards. Post our
+                    // correction so it runs after all current callbacks have
+                    // drained, ensuring the corrected ratio is the one that
+                    // sticks for the visible half.
+                    flatPlayerView.post { applyStereo() }
                 }
             },
         )
