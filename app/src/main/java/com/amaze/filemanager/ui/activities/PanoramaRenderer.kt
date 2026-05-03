@@ -209,12 +209,14 @@ internal class PanoramaRenderer : GLSurfaceView.Renderer {
             val cosPhi = cos(phi)
             for (sector in 0..sectors) {
                 val sectorT = sector.toFloat() / sectors
-                // theta: for 360° full sweep, for 180° half sweep (range -90° .. +90°).
+                // theta: for 360° full sweep (0..2π), for 180° half sweep (π/2..3π/2).
+                // The 180° range is centered on π so the hemisphere sits in front of
+                // the camera (which looks along −Z with the default identity view).
                 val theta =
                     if (projection == Projection.EQUIRECT_360) {
                         (2f * PI.toFloat()) * sectorT
                     } else {
-                        PI.toFloat() * sectorT - (PI.toFloat() / 2f)
+                        PI.toFloat() * sectorT + (PI.toFloat() / 2f)
                     }
                 val sinTheta = sin(theta)
                 val cosTheta = cos(theta)
