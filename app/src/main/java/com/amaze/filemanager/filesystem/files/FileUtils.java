@@ -824,9 +824,12 @@ public class FileUtils {
       java.util.regex.Pattern.compile("(?i)(?<![a-z0-9])(180|vr180)(?![a-z0-9])");
 
   /**
-   * Returns true when the given image file looks like an equirectangular panorama, either by
-   * filename hint or by having a 2:1 aspect ratio decoded from the image header. Decoding the
-   * header is bounded by {@code inJustDecodeBounds} and therefore cheap.
+   * Returns true when the given image file looks like an equirectangular panorama. Detection is
+   * filename-only (fast string check) and intentionally avoids reading image bytes so that this can
+   * be called from the UI thread alongside {@link #isVideoFile(String)} and {@link
+   * #is3DModelFile(String)} without risking main-thread disk I/O (same constraint as {@code
+   * FileUtils.openFile}). Users whose panorama photos lack a descriptive filename can still open
+   * them manually via the panorama viewer menu.
    */
   public static boolean isPanoramaImageFile(@NonNull File file) {
     String name = file.getName();
@@ -834,25 +837,7 @@ public class FileUtils {
     if (!lower.endsWith(".jpg") && !lower.endsWith(".jpeg") && !lower.endsWith(".png")) {
       return false;
     }
-    if (PANORAMA_360_TOKENS.matcher(name).find() || PANORAMA_180_TOKENS.matcher(name).find()) {
-      return true;
-    }
-    // Fall back to aspect ratio: equirectangular frames are 2:1 (or 1:1 for 180° half-sphere).
-    // Decode bounds only to avoid reading pixel data.
-    android.graphics.BitmapFactory.Options opts = new android.graphics.BitmapFactory.Options();
-    opts.inJustDecodeBounds = true;
-    try {
-      android.graphics.BitmapFactory.decodeFile(file.getAbsolutePath(), opts);
-    } catch (Throwable t) {
-      return false;
-    }
-    int w = opts.outWidth;
-    int h = opts.outHeight;
-    if (w <= 0 || h <= 0) return false;
-    // Only trigger for genuinely wide panoramas to avoid hijacking regular 16:9 photos.
-    // 2:1 ± 3% tolerance covers most equirectangular exports.
-    float ratio = (float) w / (float) h;
-    return ratio > 1.94f && ratio < 2.06f && w >= 2000;
+    return PANORAMA_360_TOKENS.matcher(name).find() || PANORAMA_180_TOKENS.matcher(name).find();
   }
 
   /**
