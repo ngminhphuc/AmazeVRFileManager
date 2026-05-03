@@ -935,5 +935,13 @@ You only need to do this once, until the next time you select a new location for
     <string name="model3d_viewer">3D model</string>
     <string name="model3d_load_failed">Failed to load 3D model</string>
     <string name="model3d_only_glb">Only .glb (binary glTF) is supported. Convert .gltf or .obj first.</string>
+
+    <!-- Sprint 9: panorama image viewer -->
+    <string name="panorama_viewer">Panorama</string>
+    <string name="panorama_error">Failed to load panorama image</string>
+    <string name="panorama_projection">Projection</string>
+    <string name="panorama_projection_360">360° equirectangular</string>
+    <string name="panorama_projection_180">180° VR (hemispherical)</string>
+    <string name="panorama_reset_view">Reset view</string>
 </resources>
 

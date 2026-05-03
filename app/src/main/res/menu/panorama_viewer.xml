@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright (C) 2014-2026 Arpit Khurana <arpitkh96@gmail.com>, Vishal Nehra <vishalmeham2@gmail.com>,
+    Emmanuel Messulam<emmanuelbendavid@gmail.com>, Raymond Lai <airwave209gt at gmail.com> and Contributors.
+
+    This file is part of Amaze File Manager.
+
+    Amaze File Manager is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/panorama_projection_menu"
+        android:title="@string/panorama_projection"
+        app:showAsAction="always">
+        <menu>
+            <group
+                android:id="@+id/panorama_projection_group"
+                android:checkableBehavior="single">
+                <item
+                    android:id="@+id/panorama_projection_360"
+                    android:title="@string/panorama_projection_360" />
+                <item
+                    android:id="@+id/panorama_projection_180"
+                    android:title="@string/panorama_projection_180" />
+            </group>
+        </menu>
+    </item>
+    <item
+        android:id="@+id/panorama_reset_view"
+        android:title="@string/panorama_reset_view"
+        app:showAsAction="never" />
+</menu>

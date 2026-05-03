@@ -51,6 +51,7 @@ import com.amaze.filemanager.filesystem.compressed.CompressedHelper;
 import com.amaze.filemanager.ui.activities.DatabaseViewerActivity;
 import com.amaze.filemanager.ui.activities.MainActivity;
 import com.amaze.filemanager.ui.activities.Model3DViewerActivity;
+import com.amaze.filemanager.ui.activities.PanoramaViewerActivity;
 import com.amaze.filemanager.ui.activities.VrVideoPlayerActivity;
 import com.amaze.filemanager.ui.activities.superclasses.PermissionsActivity;
 import com.amaze.filemanager.ui.activities.superclasses.PreferenceActivity;
@@ -678,6 +679,8 @@ public class FileUtils {
       launchVrVideoPlayer(mainActivity, f);
     } else if (defaultHandler && is3DModelFile(f.getPath())) {
       launchModel3DViewer(mainActivity, f);
+    } else if (defaultHandler && isPanoramaImageFile(f)) {
+      launchPanoramaViewer(mainActivity, f);
     } else {
       try {
         openFileDialogFragmentFor(f, mainActivity, useNewStack);
@@ -807,6 +810,77 @@ public class FileUtils {
       mainActivity.startActivity(intent);
     } catch (Exception e) {
       LOG.warn("Failed to launch Model3DViewerActivity, falling back to chooser", e);
+      openWith(file, mainActivity, false);
+    }
+  }
+
+  // Filename token regexes mirror the spherical video detection in VrVideoPlayerActivity
+  // (word-boundary tokens to avoid false positives like "atmosphere.jpg" matching "sphere").
+  private static final java.util.regex.Pattern PANORAMA_360_TOKENS =
+      java.util.regex.Pattern.compile(
+          "(?i)(?<![a-z0-9])(360|equirect|equirectangular|pano|panorama|sphere|spherical|theta|ricoh|insta360|insta_360)(?![a-z0-9])");
+
+  private static final java.util.regex.Pattern PANORAMA_180_TOKENS =
+      java.util.regex.Pattern.compile("(?i)(?<![a-z0-9])(180|vr180)(?![a-z0-9])");
+
+  /**
+   * Returns true when the given image file looks like an equirectangular panorama, either by
+   * filename hint or by having a 2:1 aspect ratio decoded from the image header. Decoding the
+   * header is bounded by {@code inJustDecodeBounds} and therefore cheap.
+   */
+  public static boolean isPanoramaImageFile(@NonNull File file) {
+    String name = file.getName();
+    String lower = name.toLowerCase();
+    if (!lower.endsWith(".jpg") && !lower.endsWith(".jpeg") && !lower.endsWith(".png")) {
+      return false;
+    }
+    if (PANORAMA_360_TOKENS.matcher(name).find() || PANORAMA_180_TOKENS.matcher(name).find()) {
+      return true;
+    }
+    // Fall back to aspect ratio: equirectangular frames are 2:1 (or 1:1 for 180° half-sphere).
+    // Decode bounds only to avoid reading pixel data.
+    android.graphics.BitmapFactory.Options opts = new android.graphics.BitmapFactory.Options();
+    opts.inJustDecodeBounds = true;
+    try {
+      android.graphics.BitmapFactory.decodeFile(file.getAbsolutePath(), opts);
+    } catch (Throwable t) {
+      return false;
+    }
+    int w = opts.outWidth;
+    int h = opts.outHeight;
+    if (w <= 0 || h <= 0) return false;
+    // Only trigger for genuinely wide panoramas to avoid hijacking regular 16:9 photos.
+    // 2:1 ± 3% tolerance covers most equirectangular exports.
+    float ratio = (float) w / (float) h;
+    return ratio > 1.94f && ratio < 2.06f && w >= 2000;
+  }
+
+  /**
+   * Returns the default panorama projection for the given filename (360° vs 180°). Preference
+   * order: explicit VR180/180 tokens first, then any 360° token, then fall back to 360°.
+   */
+  @NonNull
+  public static String detectPanoramaProjection(@NonNull String name) {
+    if (PANORAMA_180_TOKENS.matcher(name).find()) return "EQUIRECT_180";
+    return "EQUIRECT_360";
+  }
+
+  /**
+   * Opens the given local image in the inline {@link PanoramaViewerActivity}. Falls back to the
+   * standard open-file chooser if launching fails.
+   */
+  public static void launchPanoramaViewer(@NonNull MainActivity mainActivity, @NonNull File file) {
+    try {
+      Uri uri = FileProvider.getUriForFile(mainActivity, mainActivity.getPackageName(), file);
+      Intent intent = new Intent(mainActivity, PanoramaViewerActivity.class);
+      intent.setAction(Intent.ACTION_VIEW);
+      intent.setData(uri);
+      intent.putExtra(
+          PanoramaViewerActivity.EXTRA_PROJECTION, detectPanoramaProjection(file.getName()));
+      intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      mainActivity.startActivity(intent);
+    } catch (Exception e) {
+      LOG.warn("Failed to launch PanoramaViewerActivity, falling back to chooser", e);
       openWith(file, mainActivity, false);
     }
   }
