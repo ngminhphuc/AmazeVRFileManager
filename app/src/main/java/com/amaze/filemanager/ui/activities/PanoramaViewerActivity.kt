@@ -68,6 +68,12 @@ class PanoramaViewerActivity : AppCompatActivity() {
     private lateinit var dragDetector: GestureDetector
     private var loadExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 
+    // Retained so the bitmap can be re-uploaded whenever the EGL context is
+    // recreated (e.g. after onPause/onResume on devices that don't preserve
+    // the context). Without this, the sphere would render black on resume
+    // because onSurfaceCreated allocates a new GL texture handle.
+    private var imageUri: Uri? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_panorama_viewer)
@@ -89,6 +95,17 @@ class PanoramaViewerActivity : AppCompatActivity() {
             }.getOrDefault(PanoramaRenderer.Projection.EQUIRECT_360)
 
         glSurfaceView.setEGLContextClientVersion(2)
+        // Best-effort: most Quest 3 / modern Android devices honour this and
+        // skip destroying the EGL context on pause, which lets the already-
+        // uploaded texture survive a brief background trip. The re-upload
+        // fallback below still covers devices that ignore the hint.
+        glSurfaceView.preserveEGLContextOnPause = true
+        renderer.onContextRecreated = {
+            // Re-trigger decode on the background executor whenever the GL
+            // context is recreated. Runs on the GL thread; handler hops to
+            // UI thread before touching Android views.
+            imageUri?.let { runOnUiThread { loadBitmap(it) } }
+        }
         glSurfaceView.setRenderer(renderer)
         glSurfaceView.renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
 
@@ -144,6 +161,7 @@ class PanoramaViewerActivity : AppCompatActivity() {
             showError(R.string.panorama_error)
             return
         }
+        imageUri = uri
         loadBitmap(uri)
     }
 

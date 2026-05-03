@@ -58,6 +58,11 @@ internal class PanoramaRenderer : GLSurfaceView.Renderer {
 
     @Volatile var projection: Projection = Projection.EQUIRECT_360
 
+    // Invoked on the GL thread at the end of [onSurfaceCreated] once a new
+    // texture handle is live. The hosting activity uses it to re-queue a
+    // bitmap upload when the EGL context was destroyed during pause.
+    @Volatile var onContextRecreated: (() -> Unit)? = null
+
     private var pendingBitmap: Bitmap? = null
     private var programHandle = 0
     private var positionHandle = 0
@@ -131,6 +136,11 @@ internal class PanoramaRenderer : GLSurfaceView.Renderer {
             GLES20.GL_TEXTURE_WRAP_T,
             GLES20.GL_CLAMP_TO_EDGE,
         )
+
+        // Signal the host so it can re-upload the bitmap whenever the EGL
+        // context was destroyed (GLSurfaceView default on pause on some
+        // devices). Without this the sphere would render black on resume.
+        onContextRecreated?.invoke()
     }
 
     override fun onSurfaceChanged(
