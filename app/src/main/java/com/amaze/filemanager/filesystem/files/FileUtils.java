@@ -51,6 +51,7 @@ import com.amaze.filemanager.filesystem.compressed.CompressedHelper;
 import com.amaze.filemanager.ui.activities.DatabaseViewerActivity;
 import com.amaze.filemanager.ui.activities.MainActivity;
 import com.amaze.filemanager.ui.activities.Model3DViewerActivity;
+import com.amaze.filemanager.ui.activities.PanoramaViewerActivity;
 import com.amaze.filemanager.ui.activities.VrVideoPlayerActivity;
 import com.amaze.filemanager.ui.activities.superclasses.PermissionsActivity;
 import com.amaze.filemanager.ui.activities.superclasses.PreferenceActivity;
@@ -678,6 +679,8 @@ public class FileUtils {
       launchVrVideoPlayer(mainActivity, f);
     } else if (defaultHandler && is3DModelFile(f.getPath())) {
       launchModel3DViewer(mainActivity, f);
+    } else if (defaultHandler && isPanoramaImageFile(f)) {
+      launchPanoramaViewer(mainActivity, f);
     } else {
       try {
         openFileDialogFragmentFor(f, mainActivity, useNewStack);
@@ -807,6 +810,62 @@ public class FileUtils {
       mainActivity.startActivity(intent);
     } catch (Exception e) {
       LOG.warn("Failed to launch Model3DViewerActivity, falling back to chooser", e);
+      openWith(file, mainActivity, false);
+    }
+  }
+
+  // Filename token regexes mirror the spherical video detection in VrVideoPlayerActivity
+  // (word-boundary tokens to avoid false positives like "atmosphere.jpg" matching "sphere").
+  private static final java.util.regex.Pattern PANORAMA_360_TOKENS =
+      java.util.regex.Pattern.compile(
+          "(?i)(?<![a-z0-9])(360|equirect|equirectangular|pano|panorama|sphere|spherical|theta|ricoh|insta360|insta_360)(?![a-z0-9])");
+
+  private static final java.util.regex.Pattern PANORAMA_180_TOKENS =
+      java.util.regex.Pattern.compile("(?i)(?<![a-z0-9])(180|vr180)(?![a-z0-9])");
+
+  /**
+   * Returns true when the given image file looks like an equirectangular panorama. Detection is
+   * filename-only (fast string check) and intentionally avoids reading image bytes so that this can
+   * be called from the UI thread alongside {@link #isVideoFile(String)} and {@link
+   * #is3DModelFile(String)} without risking main-thread disk I/O (same constraint as {@code
+   * FileUtils.openFile}). Users whose panorama photos lack a descriptive filename can still open
+   * them manually via the panorama viewer menu.
+   */
+  public static boolean isPanoramaImageFile(@NonNull File file) {
+    String name = file.getName();
+    String lower = name.toLowerCase();
+    if (!lower.endsWith(".jpg") && !lower.endsWith(".jpeg") && !lower.endsWith(".png")) {
+      return false;
+    }
+    return PANORAMA_360_TOKENS.matcher(name).find() || PANORAMA_180_TOKENS.matcher(name).find();
+  }
+
+  /**
+   * Returns the default panorama projection for the given filename (360° vs 180°). Preference
+   * order: explicit VR180/180 tokens first, then any 360° token, then fall back to 360°.
+   */
+  @NonNull
+  public static String detectPanoramaProjection(@NonNull String name) {
+    if (PANORAMA_180_TOKENS.matcher(name).find()) return "EQUIRECT_180";
+    return "EQUIRECT_360";
+  }
+
+  /**
+   * Opens the given local image in the inline {@link PanoramaViewerActivity}. Falls back to the
+   * standard open-file chooser if launching fails.
+   */
+  public static void launchPanoramaViewer(@NonNull MainActivity mainActivity, @NonNull File file) {
+    try {
+      Uri uri = FileProvider.getUriForFile(mainActivity, mainActivity.getPackageName(), file);
+      Intent intent = new Intent(mainActivity, PanoramaViewerActivity.class);
+      intent.setAction(Intent.ACTION_VIEW);
+      intent.setData(uri);
+      intent.putExtra(
+          PanoramaViewerActivity.EXTRA_PROJECTION, detectPanoramaProjection(file.getName()));
+      intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      mainActivity.startActivity(intent);
+    } catch (Exception e) {
+      LOG.warn("Failed to launch PanoramaViewerActivity, falling back to chooser", e);
       openWith(file, mainActivity, false);
     }
   }
