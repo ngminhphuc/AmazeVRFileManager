@@ -369,12 +369,18 @@ public class MainFragment extends Fragment
       listView.setBackgroundColor(Utils.getColor(getContext(), R.color.grid_background_light));
     }
 
-    if (mLayoutManagerGrid == null)
-      if (mainFragmentViewModel.getColumns() == -1 || mainFragmentViewModel.getColumns() == 0)
-        mLayoutManagerGrid = new CustomScrollGridLayoutManager(getActivity(), 3);
-      else
-        mLayoutManagerGrid =
-            new CustomScrollGridLayoutManager(getActivity(), mainFragmentViewModel.getColumns());
+    int targetColumns =
+        (mainFragmentViewModel.getColumns() == -1 || mainFragmentViewModel.getColumns() == 0)
+            ? 3
+            : mainFragmentViewModel.getColumns();
+    if (mLayoutManagerGrid == null) {
+      mLayoutManagerGrid = new CustomScrollGridLayoutManager(getActivity(), targetColumns);
+    } else if (mLayoutManagerGrid.getSpanCount() != targetColumns) {
+      // Sprint 10 — the cached grid manager survives across folders, so any
+      // change to the user's grid-column preference must propagate here or the
+      // SeekBar in ViewOptionsDialog is silently ignored.
+      mLayoutManagerGrid.setSpanCount(targetColumns);
+    }
     setGridLayoutSpanSizeLookup(mLayoutManagerGrid);
     listView.setLayoutManager(mLayoutManagerGrid);
     listView.clearOnScrollListeners();
@@ -397,6 +403,24 @@ public class MainFragment extends Fragment
     mainFragmentViewModel.setAdapterListItems(null);
     mainFragmentViewModel.setIconList(null);
     adapter = null;
+  }
+
+  /**
+   * Sprint 10 — public entry point used by ViewOptionsDialog when the user changes the grid-column
+   * count while already in grid mode. {@link #switchView()} alone would no-op (no list→grid
+   * transition), so the cached {@link #mLayoutManagerGrid} would keep its old span count.
+   */
+  public void applyGridColumns() {
+    if (mainFragmentViewModel == null || mainFragmentViewModel.isList()) return;
+    if (mLayoutManagerGrid == null) return;
+    int targetColumns =
+        (mainFragmentViewModel.getColumns() == -1 || mainFragmentViewModel.getColumns() == 0)
+            ? 3
+            : mainFragmentViewModel.getColumns();
+    if (mLayoutManagerGrid.getSpanCount() != targetColumns) {
+      mLayoutManagerGrid.setSpanCount(targetColumns);
+      mLayoutManagerGrid.requestLayout();
+    }
   }
 
   public void switchView() {

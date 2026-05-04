@@ -182,6 +182,11 @@ object ViewOptionsDialog {
         // before switchView() rebuilds the grid layout manager.
         viewModel.initColumns(prefs)
         mainFragment.switchView()
+        // switchView() only rebuilds the grid layout manager when transitioning
+        // list→grid; if we were already in grid mode, the cached
+        // GridLayoutManager keeps its old span count. applyGridColumns() forces
+        // the span update so the SeekBar's effect is visible immediately.
+        mainFragment.applyGridColumns()
         // Force a list reload so the recycler adapter rebinds with the new
         // per-row metadata flags (file size, last modified, permissions,
         // dividers) and respects the updated hidden-files preference.
