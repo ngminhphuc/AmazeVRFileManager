@@ -1148,7 +1148,21 @@ public class MainActivity extends PermissionsActivity
       menu.findItem(R.id.sort).setVisible(true);
       menu.findItem(R.id.hiddenitems).setVisible(true);
       menu.findItem(R.id.view).setVisible(true);
+      menu.findItem(R.id.view_options).setVisible(true);
       menu.findItem(R.id.extract).setVisible(false);
+      // Sprint 10 — toolbar Up/Back/Forward visibility & enabled state.
+      menu.findItem(R.id.nav_up).setVisible(true);
+      menu.findItem(R.id.nav_back).setVisible(true);
+      menu.findItem(R.id.nav_forward).setVisible(true);
+      try {
+        executeWithMainFragment(
+            mainFragment -> {
+              applyNavMenuState(menu, mainFragment);
+              return null;
+            });
+      } catch (Exception e) {
+        LOG.warn("failure while preparing nav menu state", e);
+      }
       invalidatePasteSnackbar(true);
       findViewById(R.id.buttonbarframe).setVisibility(View.VISIBLE);
     } else if (fragment instanceof AppsListFragment
@@ -1172,6 +1186,10 @@ public class MainActivity extends PermissionsActivity
       }
       menu.findItem(R.id.hiddenitems).setVisible(false);
       menu.findItem(R.id.view).setVisible(false);
+      menu.findItem(R.id.view_options).setVisible(false);
+      menu.findItem(R.id.nav_up).setVisible(false);
+      menu.findItem(R.id.nav_back).setVisible(false);
+      menu.findItem(R.id.nav_forward).setVisible(false);
       invalidatePasteSnackbar(false);
     } else if (fragment instanceof CompressedExplorerFragment) {
       appbar.setTitle(R.string.appbar_name);
@@ -1184,10 +1202,40 @@ public class MainActivity extends PermissionsActivity
       menu.findItem(R.id.sort).setVisible(false);
       menu.findItem(R.id.hiddenitems).setVisible(false);
       menu.findItem(R.id.view).setVisible(false);
+      menu.findItem(R.id.view_options).setVisible(false);
+      menu.findItem(R.id.nav_up).setVisible(false);
+      menu.findItem(R.id.nav_back).setVisible(false);
+      menu.findItem(R.id.nav_forward).setVisible(false);
       menu.findItem(R.id.extract).setVisible(true);
       invalidatePasteSnackbar(false);
     }
     return super.onPrepareOptionsMenu(menu);
+  }
+
+  /**
+   * Sprint 10 — sync the toolbar Up/Back/Forward icons with the active main fragment's directory
+   * history. Disabled icons stay visible (so the user can predict where they will appear) but
+   * become non-clickable and visually faded to communicate that they are inert at the current
+   * location.
+   */
+  private void applyNavMenuState(
+      Menu menu, com.amaze.filemanager.ui.fragments.MainFragment mainFragment) {
+    if (menu == null || mainFragment == null) return;
+    MenuItem up = menu.findItem(R.id.nav_up);
+    MenuItem back = menu.findItem(R.id.nav_back);
+    MenuItem forward = menu.findItem(R.id.nav_forward);
+    setNavMenuItemEnabled(up, mainFragment.canNavigateUp());
+    setNavMenuItemEnabled(back, mainFragment.canNavigateBack());
+    setNavMenuItemEnabled(forward, mainFragment.canNavigateForward());
+  }
+
+  private void setNavMenuItemEnabled(MenuItem item, boolean enabled) {
+    if (item == null) return;
+    item.setEnabled(enabled);
+    android.graphics.drawable.Drawable icon = item.getIcon();
+    if (icon != null) {
+      icon.mutate().setAlpha(enabled ? 255 : 90);
+    }
   }
 
   // called when the user exits the action mode
@@ -1215,6 +1263,17 @@ public class MainActivity extends PermissionsActivity
         mainFragment -> {
           if (item.getItemId() == R.id.home) {
             mainFragment.home();
+          } else if (item.getItemId() == R.id.nav_back) {
+            // Sprint 10 — toolbar Back: replay previous directory from history.
+            mainFragment.navigateBack();
+          } else if (item.getItemId() == R.id.nav_forward) {
+            mainFragment.navigateForward();
+          } else if (item.getItemId() == R.id.nav_up) {
+            // Up = parent directory; reuse the existing system-back semantics
+            // so SMB/SFTP/FTP roots fall back to home as before.
+            mainFragment.goBack();
+          } else if (item.getItemId() == R.id.view_options) {
+            com.amaze.filemanager.ui.dialogs.ViewOptionsDialog.show(mainActivity, mainFragment);
           } else if (item.getItemId() == R.id.history) {
             HistoryDialog.showHistoryDialog(mainActivity, mainFragment);
           } else if (item.getItemId() == R.id.sethome) {

@@ -163,6 +163,29 @@ public class MainFragment extends Fragment
   private RecyclerView listView;
   private UtilitiesProvider utilsProvider;
   private HashMap<String, Bundle> scrolls = new HashMap<>();
+
+  // Sprint 10 — per-tab Back/Forward directory history. Each entry captures the
+  // path and the OpenMode that loaded it, so back-navigating from an SMB share
+  // to a local folder restores the right backend. The stacks are intentionally
+  // bounded (NAV_STACK_LIMIT) to keep memory predictable on deep traversals.
+  private static final int NAV_STACK_LIMIT = 64;
+  private final java.util.LinkedList<NavEntry> backStack = new java.util.LinkedList<>();
+  private final java.util.LinkedList<NavEntry> forwardStack = new java.util.LinkedList<>();
+  // Set true while servicing a Back/Forward toolbar action so the loadlist hook
+  // does not re-record the navigation onto the stacks.
+  private boolean isHistoryNavigation = false;
+
+  /** Captured directory pointer for Back/Forward navigation. Immutable. */
+  static final class NavEntry {
+    final String path;
+    final OpenMode openMode;
+
+    NavEntry(String path, OpenMode openMode) {
+      this.path = path;
+      this.openMode = openMode;
+    }
+  }
+
   private View rootView;
   private FastScroller fastScroller;
   private CustomFileObserver customFileObserver;
@@ -645,6 +668,25 @@ public class MainFragment extends Fragment
       getMainActivity().getActionModeHelper().getActionMode().finish();
     }
 
+    // Sprint 10 — record the previous directory for Back/Forward navigation.
+    // Skipped while servicing a toolbar Back/Forward action (isHistoryNavigation)
+    // because that path is being replayed from the stack, not freshly entered.
+    if (!isHistoryNavigation) {
+      String previousPath = mainFragmentViewModel.getCurrentPath();
+      OpenMode previousMode = mainFragmentViewModel.getOpenMode();
+      if (previousPath != null && !previousPath.equals(providedPath)) {
+        if (backStack.size() >= NAV_STACK_LIMIT) {
+          backStack.removeLast();
+        }
+        backStack.push(new NavEntry(previousPath, previousMode));
+        forwardStack.clear();
+      }
+      MainActivity activity = getMainActivity();
+      if (activity != null) {
+        activity.invalidateOptionsMenu();
+      }
+    }
+
     mSwipeRefreshLayout.setRefreshing(true);
 
     if (loadFilesListTask != null && loadFilesListTask.getStatus() == AsyncTask.Status.RUNNING) {
@@ -1096,6 +1138,90 @@ public class MainFragment extends Fragment
     b.putInt("index", index);
     b.putInt("top", top);
     scrolls.put(mainFragmentViewModel.getCurrentPath(), b);
+  }
+
+  /**
+   * Sprint 10 — returns true while there is a previous directory recorded in the Back stack that
+   * the toolbar Back button can replay. The system back button keeps the original parent-directory
+   * semantics through {@link #goBack()}.
+   */
+  public boolean canNavigateBack() {
+    return !backStack.isEmpty();
+  }
+
+  /** Sprint 10 — returns true while a Back action has populated the Forward stack. */
+  public boolean canNavigateForward() {
+    return !forwardStack.isEmpty();
+  }
+
+  /**
+   * Sprint 10 — returns true while the parent directory of the current location is reachable.
+   * Mirrors the conditions inside {@link #goBack()} that route to {@code MainActivity.exit()} so
+   * the toolbar Up button reflects them.
+   */
+  public boolean canNavigateUp() {
+    if (mainFragmentViewModel == null) return false;
+    String currentPath = mainFragmentViewModel.getCurrentPath();
+    if (currentPath == null) return false;
+    if ("/".equals(currentPath)) return false;
+    String home = mainFragmentViewModel.getHome();
+    return home == null || !home.equals(currentPath);
+  }
+
+  /**
+   * Sprint 10 — replay the most recent entry from the Back stack (toolbar Back action). Pushes the
+   * current directory onto the Forward stack so the user can re-traverse the path forward. No-op if
+   * the stack is empty.
+   */
+  public void navigateBack() {
+    if (backStack.isEmpty()) return;
+    NavEntry target = backStack.pop();
+    String currentPath = mainFragmentViewModel.getCurrentPath();
+    OpenMode currentMode = mainFragmentViewModel.getOpenMode();
+    if (currentPath != null) {
+      if (forwardStack.size() >= NAV_STACK_LIMIT) {
+        forwardStack.removeLast();
+      }
+      forwardStack.push(new NavEntry(currentPath, currentMode));
+    }
+    isHistoryNavigation = true;
+    try {
+      loadlist(target.path, true, target.openMode, false);
+    } finally {
+      isHistoryNavigation = false;
+    }
+    MainActivity activity = getMainActivity();
+    if (activity != null) {
+      activity.invalidateOptionsMenu();
+    }
+  }
+
+  /**
+   * Sprint 10 — counterpart to {@link #navigateBack()} — replays the most recent entry from the
+   * Forward stack. The current directory is moved back onto the Back stack to keep history
+   * symmetric.
+   */
+  public void navigateForward() {
+    if (forwardStack.isEmpty()) return;
+    NavEntry target = forwardStack.pop();
+    String currentPath = mainFragmentViewModel.getCurrentPath();
+    OpenMode currentMode = mainFragmentViewModel.getOpenMode();
+    if (currentPath != null) {
+      if (backStack.size() >= NAV_STACK_LIMIT) {
+        backStack.removeLast();
+      }
+      backStack.push(new NavEntry(currentPath, currentMode));
+    }
+    isHistoryNavigation = true;
+    try {
+      loadlist(target.path, false, target.openMode, false);
+    } finally {
+      isHistoryNavigation = false;
+    }
+    MainActivity activity = getMainActivity();
+    if (activity != null) {
+      activity.invalidateOptionsMenu();
+    }
   }
 
   public void goBack() {
