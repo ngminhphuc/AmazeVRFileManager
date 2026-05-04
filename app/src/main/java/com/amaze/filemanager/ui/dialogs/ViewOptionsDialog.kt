@@ -219,24 +219,28 @@ object ViewOptionsDialog {
         val previousLayout =
             DataUtils.getInstance().getListOrGridForPath(currentPath, DataUtils.LIST)
         AppConfig.getInstance().runInBackground {
+            // saveToDatabase returns a cold Completable that only runs on
+            // subscribe; without blockingAwait() the Room insert silently
+            // never executes. removeFromDatabase already subscribes
+            // internally so it's left as-is.
             if (wantGrid) {
                 if (previousLayout == DataUtils.LIST) {
                     utilsHandler.removeFromDatabase(
                         OperationData(UtilsHandler.Operation.LIST, currentPath),
                     )
                 }
-                utilsHandler.saveToDatabase(
-                    OperationData(UtilsHandler.Operation.GRID, currentPath),
-                )
+                utilsHandler
+                    .saveToDatabase(OperationData(UtilsHandler.Operation.GRID, currentPath))
+                    .blockingAwait()
             } else {
                 if (previousLayout == DataUtils.GRID) {
                     utilsHandler.removeFromDatabase(
                         OperationData(UtilsHandler.Operation.GRID, currentPath),
                     )
                 }
-                utilsHandler.saveToDatabase(
-                    OperationData(UtilsHandler.Operation.LIST, currentPath),
-                )
+                utilsHandler
+                    .saveToDatabase(OperationData(UtilsHandler.Operation.LIST, currentPath))
+                    .blockingAwait()
             }
         }
         DataUtils.getInstance().setPathAsGridOrList(
