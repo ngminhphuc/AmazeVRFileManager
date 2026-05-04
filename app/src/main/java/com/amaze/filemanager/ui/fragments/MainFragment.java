@@ -873,6 +873,14 @@ public class MainFragment extends Fragment
       mainFragmentViewModel.setCurrentPath(path);
       mainFragmentViewModel.setOpenMode(openMode);
       reloadListElements(back, grid);
+      // Sprint 10 — refresh nav button states *after* the view model has the
+      // new path. The earlier invalidateOptionsMenu() in loadlist() runs
+      // before LoadFilesListTask completes, so canNavigateUp() / Back state
+      // would otherwise reflect the previous directory.
+      MainActivity activity = getMainActivity();
+      if (activity != null) {
+        activity.invalidateOptionsMenu();
+      }
     } else {
       // list loading cancelled
       // TODO: Add support for cancelling list loading
