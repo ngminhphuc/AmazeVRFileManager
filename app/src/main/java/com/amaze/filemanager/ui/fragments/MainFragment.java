@@ -1164,6 +1164,9 @@ public class MainFragment extends Fragment
     String currentPath = mainFragmentViewModel.getCurrentPath();
     if (currentPath == null) return false;
     if ("/".equals(currentPath)) return false;
+    // Cloud roots short-circuit through MainActivity.exit() inside goBack(),
+    // so the Up button must not appear actionable at those locations.
+    if (mainFragmentViewModel.getIsOnCloudRoot()) return false;
     String home = mainFragmentViewModel.getHome();
     return home == null || !home.equals(currentPath);
   }

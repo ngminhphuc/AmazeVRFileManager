@@ -28,6 +28,9 @@ import android.widget.SeekBar
 import android.widget.TextView
 import com.afollestad.materialdialogs.MaterialDialog
 import com.amaze.filemanager.R
+import com.amaze.filemanager.application.AppConfig
+import com.amaze.filemanager.database.UtilsHandler
+import com.amaze.filemanager.database.models.OperationData
 import com.amaze.filemanager.ui.activities.MainActivity
 import com.amaze.filemanager.ui.fragments.MainFragment
 import com.amaze.filemanager.ui.fragments.preferencefragments.PreferencesConstants.PREFERENCE_GRID_COLUMNS
@@ -166,15 +169,14 @@ object ViewOptionsDialog {
             .putBoolean(PREFERENCE_SHOW_HIDDENFILES, showHidden)
             .apply()
 
-        // Persist the per-folder layout to the same store the existing
-        // R.id.view menu writes to, so toggling here matches that path.
+        // Persist the per-folder layout to the same stores the existing
+        // R.id.view menu writes to (in-memory DataUtils + UtilsHandler SQLite),
+        // so the choice survives an app restart and stays in sync with the
+        // legacy toggle path.
         val viewModel = mainFragment.mainFragmentViewModel ?: return
         val currentPath = mainFragment.currentPath
         if (currentPath != null) {
-            DataUtils.getInstance().setPathAsGridOrList(
-                currentPath,
-                if (wantGrid) DataUtils.GRID else DataUtils.LIST,
-            )
+            persistPathLayout(currentPath, wantGrid)
         }
         // Pull the freshly-saved grid column count back into the view model
         // before switchView() rebuilds the grid layout manager.
@@ -192,5 +194,47 @@ object ViewOptionsDialog {
             )
         }
         mainActivity.invalidateOptionsMenu()
+    }
+
+    /**
+     * Mirrors the persistence pattern in `MainActivity.onOptionsItemSelected`
+     * for `R.id.view`: write the new layout to the SQLite store via
+     * [UtilsHandler] (background thread), drop the previous opposite-layout
+     * row if any, then update the in-memory [DataUtils] cache. Without the
+     * SQLite write, the choice is wiped on next app start because DataUtils
+     * is rehydrated from the database in [MainActivity.onCreate].
+     */
+    private fun persistPathLayout(
+        currentPath: String,
+        wantGrid: Boolean,
+    ) {
+        val utilsHandler: UtilsHandler = AppConfig.getInstance().utilsHandler
+        val previousLayout =
+            DataUtils.getInstance().getListOrGridForPath(currentPath, DataUtils.LIST)
+        AppConfig.getInstance().runInBackground {
+            if (wantGrid) {
+                if (previousLayout == DataUtils.LIST) {
+                    utilsHandler.removeFromDatabase(
+                        OperationData(UtilsHandler.Operation.LIST, currentPath),
+                    )
+                }
+                utilsHandler.saveToDatabase(
+                    OperationData(UtilsHandler.Operation.GRID, currentPath),
+                )
+            } else {
+                if (previousLayout == DataUtils.GRID) {
+                    utilsHandler.removeFromDatabase(
+                        OperationData(UtilsHandler.Operation.GRID, currentPath),
+                    )
+                }
+                utilsHandler.saveToDatabase(
+                    OperationData(UtilsHandler.Operation.LIST, currentPath),
+                )
+            }
+        }
+        DataUtils.getInstance().setPathAsGridOrList(
+            currentPath,
+            if (wantGrid) DataUtils.GRID else DataUtils.LIST,
+        )
     }
 }
