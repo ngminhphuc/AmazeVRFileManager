@@ -110,11 +110,13 @@ object ViewOptionsDialog {
             },
         )
 
+        // Defaults must mirror PreferenceActivity.getBoolean() so a fresh
+        // install keeps the same checkbox states the rest of the app reads.
         showThumbnails.isChecked = prefs.getBoolean(PREFERENCE_SHOW_THUMB, true)
-        showFileSize.isChecked = prefs.getBoolean(PREFERENCE_SHOW_FILE_SIZE, false)
+        showFileSize.isChecked = prefs.getBoolean(PREFERENCE_SHOW_FILE_SIZE, true)
         showLastModified.isChecked = prefs.getBoolean(PREFERENCE_SHOW_LAST_MODIFIED, true)
         showPermissions.isChecked = prefs.getBoolean(PREFERENCE_SHOW_PERMISSIONS, false)
-        showDividers.isChecked = prefs.getBoolean(PREFERENCE_SHOW_DIVIDERS, false)
+        showDividers.isChecked = prefs.getBoolean(PREFERENCE_SHOW_DIVIDERS, true)
         showHidden.isChecked = prefs.getBoolean(PREFERENCE_SHOW_HIDDENFILES, false)
 
         MaterialDialog.Builder(mainActivity)
