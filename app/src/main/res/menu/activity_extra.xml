@@ -19,6 +19,22 @@
 
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
+    <!-- Sprint 10: directory navigation toolbar (Up / Back / Forward) -->
+    <item
+        android:id="@+id/nav_back"
+        android:title="@string/nav_back"
+        android:icon="@drawable/ic_arrow_back_white_24dp"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/nav_forward"
+        android:title="@string/nav_forward"
+        android:icon="@drawable/ic_arrow_forward_white_24dp"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/nav_up"
+        android:title="@string/nav_up"
+        android:icon="@drawable/ic_arrow_upward_white_24dp"
+        app:showAsAction="always" />
     <item
         android:id="@+id/search"
         android:title="@string/search"
@@ -45,6 +61,12 @@
         android:icon="@drawable/ic_history_white_24dp"
         app:showAsAction="ifRoom"
         android:title="@string/history"/>
+    <!-- Sprint 10: combined view options dialog (thumbnails / details / grid columns) -->
+    <item
+        android:id="@+id/view_options"
+        android:icon="@drawable/ic_tune_white_24dp"
+        app:showAsAction="ifRoom"
+        android:title="@string/view_options"/>
     <item android:id="@+id/media_servers"
         android:icon="@drawable/ic_settings_remote_white_24dp"
         app:showAsAction="never"

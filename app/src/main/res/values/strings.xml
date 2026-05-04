@@ -943,5 +943,21 @@ You only need to do this once, until the next time you select a new location for
     <string name="panorama_projection_360">360° equirectangular</string>
     <string name="panorama_projection_180">180° VR (hemispherical)</string>
     <string name="panorama_reset_view">Reset view</string>
+
+    <!-- Sprint 10: navigation toolbar + view options dialog -->
+    <string name="nav_back">Back</string>
+    <string name="nav_forward">Forward</string>
+    <string name="nav_up">Up one folder</string>
+    <string name="view_options">View options</string>
+    <string name="view_options_layout_list">List view</string>
+    <string name="view_options_layout_grid">Grid view</string>
+    <string name="view_options_grid_columns">Grid columns</string>
+    <string name="view_options_show_thumbnails">Show thumbnails</string>
+    <string name="view_options_show_file_size">Show file size</string>
+    <string name="view_options_show_last_modified">Show last modified</string>
+    <string name="view_options_show_permissions">Show permissions</string>
+    <string name="view_options_show_dividers">Show row dividers</string>
+    <string name="view_options_show_hidden">Show hidden files</string>
+    <string name="view_options_apply">Apply</string>
 </resources>
 
