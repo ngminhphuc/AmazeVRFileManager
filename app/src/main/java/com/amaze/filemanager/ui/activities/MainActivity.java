@@ -1258,6 +1258,11 @@ public class MainActivity extends PermissionsActivity
       return true;
     }
 
+    if (item.getItemId() == R.id.webdav_servers) {
+      startActivity(new Intent(this, WebDavServersActivity.class));
+      return true;
+    }
+
     // Handle action buttons
     executeWithMainFragment(
         mainFragment -> {

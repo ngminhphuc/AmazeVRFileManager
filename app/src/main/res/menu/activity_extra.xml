@@ -75,6 +75,10 @@
         android:icon="@drawable/ic_settings_remote_white_24dp"
         app:showAsAction="never"
         android:title="@string/smb_servers"/>
+    <item android:id="@+id/webdav_servers"
+        android:icon="@drawable/ic_settings_remote_white_24dp"
+        app:showAsAction="never"
+        android:title="@string/webdav_servers"/>
     <item
         android:id="@+id/view"
         android:title=""/>
