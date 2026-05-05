@@ -25,6 +25,7 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
+import java.io.PushbackInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -116,30 +117,47 @@ object PointCloudParser {
 
     @Throws(IOException::class)
     private fun parsePly(input: InputStream): PointCloud {
-        // Slurp the header line-by-line as ASCII, then keep the remaining
-        // bytes for the binary body if applicable. PLY headers are always
-        // ASCII regardless of the body format — that's specified by the
-        // spec so we can read until "end_header\n" with a byte reader.
+        // PLY headers are always ASCII regardless of the body format. Read
+        // bytes until we see the "end_header" token followed by ANY line
+        // terminator (LF, CRLF, or bare CR) — the PLY spec allows either
+        // and Windows-authored files commonly produce CRLF. We wrap the
+        // stream in PushbackInputStream so when a CRLF terminator is hit
+        // we can consume the trailing LF cleanly without leaving stray
+        // bytes that would corrupt the binary body.
+        val pushback = PushbackInputStream(input, 2)
         val headerBytes = ByteArrayOutputStream()
-        val terminator = "end_header\n".toByteArray()
-        val window = ByteArray(terminator.size)
-        var matched = 0
+        val token = "end_header".toByteArray()
+        var sawToken = false
         while (true) {
-            val b = input.read()
+            val b = pushback.read()
             if (b < 0) throw IOException("Unexpected EOF before PLY end_header")
             headerBytes.write(b)
-            window[matched % window.size] = b.toByte()
-            matched++
-            if (matched >= terminator.size && tailEquals(headerBytes.toByteArray(), terminator)) {
-                break
+            if (!sawToken && tailEquals(headerBytes.toByteArray(), token)) {
+                sawToken = true
+                continue
+            }
+            if (sawToken) {
+                if (b == '\n'.code) break
+                if (b == '\r'.code) {
+                    val next = pushback.read()
+                    if (next >= 0 && next != '\n'.code) {
+                        // Bare CR terminator (rare, mac-classic); push the
+                        // next byte back so the body reader sees it.
+                        pushback.unread(next)
+                    }
+                    break
+                }
+                // Any other byte after "end_header" before a terminator
+                // means we matched too eagerly (e.g. inside a comment).
+                sawToken = false
             }
         }
         val header = headerBytes.toString("US-ASCII")
         val parsedHeader = parsePlyHeader(header)
         return when (parsedHeader.format) {
-            PlyFormat.ASCII -> readPlyAscii(input, parsedHeader)
-            PlyFormat.BINARY_LITTLE_ENDIAN -> readPlyBinary(input, parsedHeader, ByteOrder.LITTLE_ENDIAN)
-            PlyFormat.BINARY_BIG_ENDIAN -> readPlyBinary(input, parsedHeader, ByteOrder.BIG_ENDIAN)
+            PlyFormat.ASCII -> readPlyAscii(pushback, parsedHeader)
+            PlyFormat.BINARY_LITTLE_ENDIAN -> readPlyBinary(pushback, parsedHeader, ByteOrder.LITTLE_ENDIAN)
+            PlyFormat.BINARY_BIG_ENDIAN -> readPlyBinary(pushback, parsedHeader, ByteOrder.BIG_ENDIAN)
         }
     }
 
@@ -231,6 +249,18 @@ object PointCloudParser {
         val hasColor = rIdx >= 0 && gIdx >= 0 && bIdx >= 0
 
         val reader = BufferedReader(InputStreamReader(input, Charsets.US_ASCII))
+        // The PLY spec stores elements in the body in the order they were
+        // declared in the header. If anything (face, edge, metadata...) was
+        // declared before "vertex", we have to consume that many lines first
+        // or vertex parsing reads the wrong rows.
+        for (e in header.elements) {
+            if (e.name == "vertex") break
+            for (i in 0 until e.count) {
+                if (reader.readLine() == null) {
+                    throw IOException("PLY truncated while skipping element ${e.name}")
+                }
+            }
+        }
         val stride = strideFor(vertexElement.count)
         val capacity = (vertexElement.count + stride - 1) / stride
         val positions = FloatArray(capacity * 3)
@@ -292,6 +322,19 @@ object PointCloudParser {
 
         val rowSize = vertexElement.properties.sumOf { sizeOfPlyType(it.type) }
         if (rowSize <= 0) throw IOException("PLY vertex row contains list/unknown property")
+        // Same ordering rule as the ASCII path: skip body bytes for any
+        // element declared before vertex. Variable-length list properties
+        // can't be skipped without parsing each row, so we reject those
+        // upfront — none of the consumer scanners we target produce a
+        // pre-vertex element with a list property.
+        for (e in header.elements) {
+            if (e.name == "vertex") break
+            val rs = e.properties.sumOf { sizeOfPlyType(it.type) }
+            if (rs <= 0) {
+                throw IOException("PLY element ${e.name} before vertex has variable-size rows")
+            }
+            skipFully(input, rs.toLong() * e.count.toLong())
+        }
         val rowBytes = ByteArray(rowSize)
         val rowBuf = ByteBuffer.wrap(rowBytes).order(order)
         val stride = strideFor(vertexElement.count)
@@ -498,6 +541,29 @@ object PointCloudParser {
             val n = input.read(out, off, out.size - off)
             if (n <= 0) throw IOException("Unexpected EOF reading PLY body")
             off += n
+        }
+    }
+
+    @Throws(IOException::class)
+    private fun skipFully(
+        input: InputStream,
+        bytes: Long,
+    ) {
+        // InputStream.skip is allowed to return less than requested even
+        // when the stream isn't at EOF. Loop until we've consumed exactly
+        // [bytes], falling back to read() when skip returns 0.
+        var remaining = bytes
+        val sink = ByteArray(8192)
+        while (remaining > 0) {
+            val skipped = input.skip(remaining)
+            if (skipped > 0) {
+                remaining -= skipped
+                continue
+            }
+            val toRead = minOf(remaining, sink.size.toLong()).toInt()
+            val n = input.read(sink, 0, toRead)
+            if (n <= 0) throw IOException("Unexpected EOF skipping PLY element")
+            remaining -= n
         }
     }
 

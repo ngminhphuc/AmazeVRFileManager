@@ -47,8 +47,13 @@ internal class PointCloudRenderer : GLSurfaceView.Renderer {
 
     @Volatile var pitchRad: Float = 0f
 
-    /** Distance from cloud centroid to the camera, in cloud units. */
-    @Volatile var distance: Float = 3f
+    /**
+     * Distance from cloud centroid to the camera, in cloud units. Starts at
+     * `0f` so the first [setCloud] call auto-fits the camera to the actual
+     * cloud radius — a non-zero default would skip the auto-fit guard and
+     * leave the camera at an arbitrary distance regardless of cloud scale.
+     */
+    @Volatile var distance: Float = 0f
 
     /**
      * Emitted on the GL thread once a fresh GL context is up so the host can
