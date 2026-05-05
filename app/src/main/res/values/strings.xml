@@ -966,5 +966,27 @@ You only need to do this once, until the next time you select a new location for
     <string name="point_cloud_unsupported">Unsupported point cloud format</string>
     <string name="point_cloud_reset_view">Reset view</string>
     <string name="point_cloud_downsampled">Cloud downsampled to %1$d points to fit memory</string>
+    <!-- Sprint 12: WebDAV remote storage -->
+    <string name="webdav_servers">WebDAV servers</string>
+    <string name="webdav_servers_empty">No WebDAV servers configured. Tap + to add one.</string>
+    <string name="webdav_servers_add">Add WebDAV server</string>
+    <string name="webdav_servers_remove_prompt">Remove %1$s and delete saved credentials?</string>
+    <string name="webdav_field_name">Display name</string>
+    <string name="webdav_field_url">URL (https://host/path/)</string>
+    <string name="webdav_field_user">User</string>
+    <string name="webdav_field_pass">Password</string>
+    <string name="webdav_field_anonymous">Anonymous (skip credentials)</string>
+    <string name="webdav_test_connection">Test connection</string>
+    <string name="webdav_testing">Testing connection…</string>
+    <string name="webdav_test_ok">Connection OK</string>
+    <string name="webdav_test_failed">Test failed: %1$s</string>
+    <string name="webdav_fill_required">Name and URL are required</string>
+    <string name="webdav_invalid_url">Please enter a full URL beginning with https:// or http://</string>
+    <string name="webdav_no_items">No items in this folder</string>
+    <string name="webdav_load_failed">Failed to load: %1$s</string>
+    <string name="webdav_unknown_server">WebDAV server not found</string>
+    <string name="webdav_unsupported_item">Unsupported item type</string>
+    <string name="webdav_downloading">Downloading %1$s…</string>
+    <string name="webdav_download_failed">Download failed: %1$s</string>
 </resources>
 

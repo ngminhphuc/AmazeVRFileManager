@@ -69,6 +69,16 @@ import com.amaze.filemanager.filesystem.smb.SmbDataSource
  * by dragging (controller stick on Quest 3 is mapped to touch by Horizon OS).
  */
 class VrVideoPlayerActivity : AppCompatActivity() {
+    /**
+     * Optional intent extra used by the WebDAV browser (Sprint 12) to pass a
+     * fully-formatted HTTP `Authorization` header (e.g. `Basic ...`) without
+     * embedding credentials in the URL. The header is forwarded as a default
+     * request property on the underlying `DefaultHttpDataSource.Factory`.
+     */
+    companion object {
+        const val EXTRA_HTTP_AUTH_HEADER: String = "http_auth_header"
+    }
+
     private var player: ExoPlayer? = null
     private lateinit var flatPlayerView: PlayerView
     private lateinit var sphericalPlayerView: PlayerView
@@ -206,7 +216,13 @@ class VrVideoPlayerActivity : AppCompatActivity() {
         val dataSourceFactory: DataSource.Factory =
             when (uri.scheme?.lowercase()) {
                 "smb" -> DataSource.Factory { SmbDataSource() }
-                "http", "https" -> DefaultHttpDataSource.Factory()
+                "http", "https" -> {
+                    val httpFactory = DefaultHttpDataSource.Factory()
+                    intent?.getStringExtra(EXTRA_HTTP_AUTH_HEADER)?.takeIf { it.isNotBlank() }?.also { auth ->
+                        httpFactory.setDefaultRequestProperties(mapOf("Authorization" to auth))
+                    }
+                    httpFactory
+                }
                 else -> DefaultDataSource.Factory(this)
             }
         val mediaSourceFactory = DefaultMediaSourceFactory(this).setDataSourceFactory(dataSourceFactory)

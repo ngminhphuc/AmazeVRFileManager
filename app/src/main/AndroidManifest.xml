@@ -274,6 +274,22 @@
             android:screenOrientation="sensorLandscape" />
 
         <activity
+            android:exported="false"
+            android:label="@string/webdav_servers"
+            android:name=".ui.activities.WebDavServersActivity"
+            android:theme="@style/appCompatBlack"
+            android:configChanges="uiMode"
+            android:screenOrientation="sensorLandscape" />
+
+        <activity
+            android:exported="false"
+            android:label="@string/webdav_servers"
+            android:name=".ui.activities.WebDavBrowserActivity"
+            android:theme="@style/appCompatBlack"
+            android:configChanges="uiMode"
+            android:screenOrientation="sensorLandscape" />
+
+        <activity
             android:exported="true"
             android:label="@string/databasereader"
             android:name=".ui.activities.DatabaseViewerActivity"
