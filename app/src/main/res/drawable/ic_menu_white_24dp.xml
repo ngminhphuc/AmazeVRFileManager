@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Sprint 13: hamburger menu icon used by the VR HUD overlay's "open
+  drawer" action. Vector path matches Material Symbols `menu` glyph at
+  24 dp, so the visual weight matches the other HUD icons sourced from
+  the existing `ic_*_white_24dp` drawables.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="@android:color/white">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M3,18h18v-2H3v2zM3,13h18v-2H3v2zM3,6v2h18V6H3z" />
+</vector>

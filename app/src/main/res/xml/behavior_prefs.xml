@@ -23,6 +23,14 @@
         app:key="texteditor_newstack"
         app:summary="@string/preference_newstack_summary"
         app:title="@string/preference_newstack_title" />
+    <!-- Sprint 13: VR HUD overlay toggle -->
+    <com.amaze.filemanager.ui.views.preference.CheckBox
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:defaultValue="true"
+        app:key="vr_hud_overlay"
+        app:summary="@string/vr_hud_overlay_summary"
+        app:title="@string/vr_hud_overlay" />
     <Preference
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

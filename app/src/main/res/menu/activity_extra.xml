@@ -79,6 +79,11 @@
         android:icon="@drawable/ic_settings_remote_white_24dp"
         app:showAsAction="never"
         android:title="@string/webdav_servers"/>
+    <!-- Sprint 13: VR HUD overlay quick toggle. Title is updated at runtime
+         in onPrepareOptionsMenu to reflect the current visibility. -->
+    <item android:id="@+id/vr_hud_toggle"
+        app:showAsAction="never"
+        android:title="@string/vr_hud_overlay"/>
     <item
         android:id="@+id/view"
         android:title=""/>
