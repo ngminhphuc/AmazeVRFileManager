@@ -959,5 +959,12 @@ You only need to do this once, until the next time you select a new location for
     <string name="view_options_show_dividers">Show row dividers</string>
     <string name="view_options_show_hidden">Show hidden files</string>
     <string name="view_options_apply">Apply</string>
+
+    <!-- Sprint 11: point cloud viewer -->
+    <string name="point_cloud_viewer">Point cloud</string>
+    <string name="point_cloud_error">Failed to load point cloud</string>
+    <string name="point_cloud_unsupported">Unsupported point cloud format</string>
+    <string name="point_cloud_reset_view">Reset view</string>
+    <string name="point_cloud_downsampled">Cloud downsampled to %1$d points to fit memory</string>
 </resources>
 
