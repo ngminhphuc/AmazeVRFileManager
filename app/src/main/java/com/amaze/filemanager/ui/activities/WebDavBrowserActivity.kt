@@ -159,18 +159,17 @@ class WebDavBrowserActivity : AppCompatActivity() {
     }
 
     private fun isVideo(entry: WebDavEntry): Boolean {
-        // Server-supplied content type wins when present (some servers send
-        // generic application/octet-stream → fall back to filename heuristic).
-        entry.contentType?.lowercase()?.let {
-            if (it.startsWith("video/")) return true
-            if (it.startsWith("application/octet-stream") || it.startsWith("application/")) {
-                // fall through to filename heuristic
-            } else {
-                return false
-            }
+        // Server-supplied content type wins when present and informative.
+        // Generic `application/octet-stream` (very common on misconfigured
+        // Apache mod_dav and Synology DSM) is treated as "unknown" and we
+        // fall through to the filename heuristic. Any other concrete MIME
+        // type (`application/pdf`, `image/jpeg`, …) is trusted as-is.
+        entry.contentType?.lowercase()?.let { ct ->
+            if (ct.startsWith("video/")) return true
+            if (!ct.startsWith("application/octet-stream")) return false
+            // octet-stream → fall through to filename heuristic below
         }
-        val name = entry.displayName
-        val mime = MimeTypes.getMimeType(name, false)
+        val mime = MimeTypes.getMimeType(entry.displayName, false)
         return mime != null && mime.startsWith("video/")
     }
 
