@@ -320,8 +320,14 @@ object PointCloudParser {
         val bIdx = vertexElement.properties.indexOfFirst { it.name == "blue" }
         val hasColor = rIdx >= 0 && gIdx >= 0 && bIdx >= 0
 
+        // sumOf alone isn't enough — a negative size from one list/unknown
+        // property can be masked by positive scalar sizes (e.g. 4+4+4+(-1)=11
+        // looks valid but the row is actually variable-length). Reject the
+        // row if ANY property has a non-positive size.
+        if (vertexElement.properties.any { sizeOfPlyType(it.type) <= 0 }) {
+            throw IOException("PLY vertex row contains list/unknown property")
+        }
         val rowSize = vertexElement.properties.sumOf { sizeOfPlyType(it.type) }
-        if (rowSize <= 0) throw IOException("PLY vertex row contains list/unknown property")
         // Same ordering rule as the ASCII path: skip body bytes for any
         // element declared before vertex. Variable-length list properties
         // can't be skipped without parsing each row, so we reject those
@@ -329,10 +335,10 @@ object PointCloudParser {
         // pre-vertex element with a list property.
         for (e in header.elements) {
             if (e.name == "vertex") break
-            val rs = e.properties.sumOf { sizeOfPlyType(it.type) }
-            if (rs <= 0) {
+            if (e.properties.any { sizeOfPlyType(it.type) <= 0 }) {
                 throw IOException("PLY element ${e.name} before vertex has variable-size rows")
             }
+            val rs = e.properties.sumOf { sizeOfPlyType(it.type) }
             skipFully(input, rs.toLong() * e.count.toLong())
         }
         val rowBytes = ByteArray(rowSize)
