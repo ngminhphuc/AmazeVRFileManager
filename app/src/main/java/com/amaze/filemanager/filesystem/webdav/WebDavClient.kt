@@ -92,28 +92,32 @@ object WebDavClient {
         }
 
     /**
-     * Cheap reachability probe used by the "Test connection" button.
-     * Sends `OPTIONS` (or `PROPFIND` Depth:0 fallback) and returns true
-     * iff the server responds with success **and** the response advertises
-     * a `DAV:` header (i.e. it is actually a WebDAV endpoint, not just an
-     * ordinary HTTP server).
+     * Reachability probe used by the "Test connection" button. Issues
+     * `PROPFIND` with `Depth: 0` against the configured base URL — this
+     * is the canonical "is this WebDAV" probe (returns 207 Multi-Status
+     * on real WebDAV endpoints) and also validates the credentials at
+     * the same time, avoiding the false-negatives we'd get from `OPTIONS`
+     * on servers that only advertise the `DAV` header on selected paths
+     * (Synology DSM, Box, some Apache mod_dav virtual hosts).
      */
     @Throws(IOException::class)
     fun probe(server: WebDavServer): Boolean {
         val url = server.baseUrl.toHttpUrlOrNull() ?: throw IOException("Invalid URL")
         val auth = basicAuthHeader(server)
+        val body = PROPFIND_BODY.toRequestBody(xmlMediaType)
         val builder =
             Request.Builder()
                 .url(url)
-                .method("OPTIONS", null)
+                .header("Depth", "0")
+                .header("Content-Type", "application/xml; charset=utf-8")
+                .method("PROPFIND", body)
         if (auth != null) builder.header("Authorization", auth)
         client.newCall(builder.build()).execute().use { resp ->
+            // 207 Multi-Status is the documented success for PROPFIND.
+            // Some servers also accept 200 OK so treat any 2xx as success
+            // — `isSuccessful` covers both.
             if (!resp.isSuccessful) {
-                throw IOException("HTTP ${resp.code} ${resp.message}")
-            }
-            val davHeader = resp.header("DAV") ?: resp.header("Dav")
-            if (davHeader.isNullOrBlank()) {
-                throw IOException("Server is not WebDAV (missing DAV header)")
+                throw IOException("PROPFIND HTTP ${resp.code} ${resp.message}")
             }
         }
         return true
@@ -151,12 +155,17 @@ object WebDavClient {
             }
 
         val all = parseMultistatus(raw, httpUrl)
-        // The first response in a Depth:1 PROPFIND describes the parent
-        // collection itself — drop it so callers see only children.
-        val selfHref = httpUrl.encodedPath
+        // Drop the parent collection's self-entry from the Depth:1 result.
+        // parseMultistatus normalises every <d:href> into an absolute URL
+        // via resolveHref, so we extract just the path portion of each
+        // entry and compare against the request URL's path. This handles
+        // servers that emit relative hrefs, absolute paths, or full URLs
+        // uniformly.
+        val selfPath = normaliseHref(httpUrl.encodedPath)
         val children =
-            all.filter {
-                normaliseHref(it.href) != normaliseHref(selfHref)
+            all.filter { entry ->
+                val entryPath = entry.href.toHttpUrlOrNull()?.encodedPath ?: entry.href
+                normaliseHref(entryPath) != selfPath
             }
         return children.sortedWith(
             compareByDescending<WebDavEntry> { it.isDirectory }
