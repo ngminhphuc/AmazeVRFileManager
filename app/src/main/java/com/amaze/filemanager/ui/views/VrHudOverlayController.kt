@@ -118,6 +118,22 @@ class VrHudOverlayController(private val activity: MainActivity) {
 
     fun isShowing(): Boolean = container?.visibility == View.VISIBLE
 
+    /**
+     * Whether the HUD is currently enabled by the persisted preference,
+     * regardless of whether the active fragment is showing it. Used by
+     * the "Show / Hide VR HUD" overflow toggle so that the title and the
+     * subsequent toggle action both refer to the same persisted state
+     * (otherwise on AppsList / FtpServer the panel is force-GONE and
+     * isShowing() would lie about the user's intent).
+     */
+    fun isEnabledByPreference(): Boolean {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(activity)
+        return prefs.getBoolean(
+            PreferencesConstants.PREFERENCE_VR_HUD_OVERLAY,
+            PreferencesConstants.DEFAULT_PREFERENCE_VR_HUD_OVERLAY,
+        )
+    }
+
     private fun wakeUp() {
         val panel = container ?: return
         panel.animate().cancel()

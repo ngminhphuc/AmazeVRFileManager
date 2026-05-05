@@ -1118,8 +1118,13 @@ public class MainActivity extends PermissionsActivity
       vrHudOverlay.refreshVisibility(fragment instanceof TabFragment);
       MenuItem hudToggle = menu.findItem(R.id.vr_hud_toggle);
       if (hudToggle != null) {
+        // Title must reflect the persisted preference (what toggle() flips),
+        // not the current visibility — visibility is force-GONE for non-Tab
+        // fragments, so isShowing() would invert the toggle on those screens.
         hudToggle.setTitle(
-            vrHudOverlay.isShowing() ? R.string.vr_hud_overlay_hide : R.string.vr_hud_overlay_show);
+            vrHudOverlay.isEnabledByPreference()
+                ? R.string.vr_hud_overlay_hide
+                : R.string.vr_hud_overlay_show);
       }
     }
     if (fragment instanceof TabFragment) {
