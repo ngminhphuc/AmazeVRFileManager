@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <resources>
+    <!-- Sprint 13: VR HUD overlay top margin. AppBarLayout in MainActivity
+         stacks the toolbar (?attr/actionBarSize ~ 56 dp) above a path bar
+         (min-height 72 dp), so 128 dp clears the entire app bar even when
+         the toolbar's scroll|enterAlways flag is fully expanded. The HUD
+         is intentionally NOT a CoordinatorLayout child of the app bar
+         (no layout_behavior) so it stays anchored at the same on-screen
+         position regardless of toolbar scroll state. -->
+    <dimen name="vr_hud_top_margin">128dp</dimen>
 
     <dimen name="drawer_width">304dp</dimen>
     <dimen name="fastscroller_track_height">70dp</dimen>
