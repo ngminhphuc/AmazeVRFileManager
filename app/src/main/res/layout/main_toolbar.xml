@@ -102,6 +102,8 @@
             android:layout_gravity="bottom"
             android:visibility="gone"
             />
+
+        <include layout="@layout/layout_vr_hud" />
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
     <com.amaze.filemanager.ui.views.drawer.CustomNavigationView
         android:id="@+id/navigation"

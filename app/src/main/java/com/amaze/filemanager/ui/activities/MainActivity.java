@@ -134,6 +134,7 @@ import com.amaze.filemanager.ui.fragments.preferencefragments.PreferencesConstan
 import com.amaze.filemanager.ui.strings.StorageNamingHelper;
 import com.amaze.filemanager.ui.theme.AppTheme;
 import com.amaze.filemanager.ui.views.CustomZoomFocusChange;
+import com.amaze.filemanager.ui.views.VrHudOverlayController;
 import com.amaze.filemanager.ui.views.appbar.AppBar;
 import com.amaze.filemanager.ui.views.drawer.Drawer;
 import com.amaze.filemanager.utils.AppConstants;
@@ -270,6 +271,8 @@ public class MainActivity extends PermissionsActivity
 
   private AppBar appbar;
   private Drawer drawer;
+  // Sprint 13 — VR HUD overlay controller (initialised in onCreate).
+  private VrHudOverlayController vrHudOverlay;
   // private HistoryManager history, grid;
   private MainActivity mainActivity = this;
   private String pathInCompressedArchive;
@@ -1108,6 +1111,17 @@ public class MainActivity extends PermissionsActivity
     MenuItem s = menu.findItem(R.id.view);
     MenuItem search = menu.findItem(R.id.search);
     Fragment fragment = getFragmentAtFrame();
+    // Sprint 13 — keep the VR HUD overlay visibility in sync with the
+    // file-list flow (only useful when a TabFragment / MainFragment is in
+    // front; AppsList / Trash bin / FTP server have their own toolbars).
+    if (vrHudOverlay != null) {
+      vrHudOverlay.refreshVisibility(fragment instanceof TabFragment);
+      MenuItem hudToggle = menu.findItem(R.id.vr_hud_toggle);
+      if (hudToggle != null) {
+        hudToggle.setTitle(
+            vrHudOverlay.isShowing() ? R.string.vr_hud_overlay_hide : R.string.vr_hud_overlay_show);
+      }
+    }
     if (fragment instanceof TabFragment) {
       appbar.setTitle(R.string.appbar_name);
       if (getBoolean(PREFERENCE_VIEW)) {
@@ -1260,6 +1274,12 @@ public class MainActivity extends PermissionsActivity
 
     if (item.getItemId() == R.id.webdav_servers) {
       startActivity(new Intent(this, WebDavServersActivity.class));
+      return true;
+    }
+
+    // Sprint 13 — VR HUD overlay quick toggle.
+    if (item.getItemId() == R.id.vr_hud_toggle) {
+      if (vrHudOverlay != null) vrHudOverlay.toggle();
       return true;
     }
 
@@ -1935,6 +1955,10 @@ public class MainActivity extends PermissionsActivity
 
     setSupportActionBar(getAppbar().getToolbar());
     drawer = new Drawer(this);
+
+    // Sprint 13 — VR HUD overlay (always-visible quick-action panel).
+    vrHudOverlay = new VrHudOverlayController(this);
+    vrHudOverlay.attach();
 
     indicator_layout = findViewById(R.id.indicator_layout);
 

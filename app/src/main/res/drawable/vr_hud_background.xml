@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Sprint 13: VR HUD overlay background.
+
+  Translucent dark slab so the HUD is visible against both light file
+  thumbnails and dark video preview frames without obscuring the
+  underlying file list. The corner radius is large enough that the
+  panel reads as a distinct floating chip rather than a flush bar.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#B3000000" />
+    <corners android:radius="20dp" />
+    <stroke
+        android:width="1dp"
+        android:color="#33ffffff" />
+</shape>

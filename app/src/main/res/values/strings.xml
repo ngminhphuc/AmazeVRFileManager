@@ -949,6 +949,16 @@ You only need to do this once, until the next time you select a new location for
     <string name="nav_forward">Forward</string>
     <string name="nav_up">Up one folder</string>
     <string name="view_options">View options</string>
+    <!-- Sprint 13 (VR HUD overlay) -->
+    <string name="vr_hud_servers">Remote servers</string>
+    <string name="vr_hud_overlay">VR HUD overlay</string>
+    <string name="vr_hud_overlay_show">Show VR HUD</string>
+    <string name="vr_hud_overlay_hide">Hide VR HUD</string>
+    <string name="vr_hud_overlay_summary">Floating quick-action panel anchored top-right of the file list. Recommended for Quest 3 controller use.</string>
+    <string name="vr_hud_servers_dialog_title">Open server browser</string>
+    <string name="vr_hud_servers_smb">SMB servers</string>
+    <string name="vr_hud_servers_webdav">WebDAV servers</string>
+    <string name="vr_hud_servers_media">Media servers (Jellyfin / Emby / Plex)</string>
     <string name="view_options_layout_list">List view</string>
     <string name="view_options_layout_grid">Grid view</string>
     <string name="view_options_grid_columns">Grid columns</string>

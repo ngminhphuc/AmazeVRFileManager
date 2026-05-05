@@ -124,4 +124,15 @@ object PreferencesConstants {
 
     const val DEFAULT_PREFERENCE_DELETE_CONFIRMATION = true
     const val DEFAULT_PREFERENCE_DELETE_PERMANENTLY_WITHOUT_CONFIRMATION = false
+
+    /**
+     * Sprint 13 (VR HUD overlay): when true, MainActivity displays an
+     * always-visible floating quick-action panel anchored top-right. The
+     * default is true on Quest 3 builds because the OS panel does not
+     * surface system back/up affordances inside individual apps and the
+     * controller pointer benefits from larger, fixed-position hit
+     * targets.
+     */
+    const val PREFERENCE_VR_HUD_OVERLAY = "vr_hud_overlay"
+    const val DEFAULT_PREFERENCE_VR_HUD_OVERLAY = true
 }
