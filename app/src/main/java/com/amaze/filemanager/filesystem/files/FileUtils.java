@@ -52,6 +52,7 @@ import com.amaze.filemanager.ui.activities.DatabaseViewerActivity;
 import com.amaze.filemanager.ui.activities.MainActivity;
 import com.amaze.filemanager.ui.activities.Model3DViewerActivity;
 import com.amaze.filemanager.ui.activities.PanoramaViewerActivity;
+import com.amaze.filemanager.ui.activities.PointCloudViewerActivity;
 import com.amaze.filemanager.ui.activities.VrVideoPlayerActivity;
 import com.amaze.filemanager.ui.activities.superclasses.PermissionsActivity;
 import com.amaze.filemanager.ui.activities.superclasses.PreferenceActivity;
@@ -681,6 +682,8 @@ public class FileUtils {
       launchModel3DViewer(mainActivity, f);
     } else if (defaultHandler && isPanoramaImageFile(f)) {
       launchPanoramaViewer(mainActivity, f);
+    } else if (defaultHandler && isPointCloudFile(f.getPath())) {
+      launchPointCloudViewer(mainActivity, f);
     } else {
       try {
         openFileDialogFragmentFor(f, mainActivity, useNewStack);
@@ -866,6 +869,37 @@ public class FileUtils {
       mainActivity.startActivity(intent);
     } catch (Exception e) {
       LOG.warn("Failed to launch PanoramaViewerActivity, falling back to chooser", e);
+      openWith(file, mainActivity, false);
+    }
+  }
+
+  /**
+   * Returns true when the given path looks like a point cloud (Stanford {@code .ply} or
+   * PointCloudLibrary {@code .pcd}). Filename-only check: matches the same UI-thread constraint
+   * applied to {@link #isVideoFile(String)} / {@link #is3DModelFile(String)} / {@link
+   * #isPanoramaImageFile(File)}.
+   */
+  public static boolean isPointCloudFile(String path) {
+    if (path == null) return false;
+    String lower = path.toLowerCase();
+    return lower.endsWith(".ply") || lower.endsWith(".pcd");
+  }
+
+  /**
+   * Opens the given local file in the inline {@link PointCloudViewerActivity}. Falls back to the
+   * standard open-file chooser if launching fails.
+   */
+  public static void launchPointCloudViewer(
+      @NonNull MainActivity mainActivity, @NonNull File file) {
+    try {
+      Uri uri = FileProvider.getUriForFile(mainActivity, mainActivity.getPackageName(), file);
+      Intent intent = new Intent(mainActivity, PointCloudViewerActivity.class);
+      intent.setAction(Intent.ACTION_VIEW);
+      intent.setData(uri);
+      intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      mainActivity.startActivity(intent);
+    } catch (Exception e) {
+      LOG.warn("Failed to launch PointCloudViewerActivity, falling back to chooser", e);
       openWith(file, mainActivity, false);
     }
   }
