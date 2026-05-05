@@ -164,7 +164,7 @@ class WebDavBrowserActivity : AppCompatActivity() {
         // Apache mod_dav and Synology DSM) is treated as "unknown" and we
         // fall through to the filename heuristic. Any other concrete MIME
         // type (`application/pdf`, `image/jpeg`, …) is trusted as-is.
-        entry.contentType?.lowercase()?.let { ct ->
+        entry.contentType?.lowercase()?.takeIf { it.isNotBlank() }?.let { ct ->
             if (ct.startsWith("video/")) return true
             if (!ct.startsWith("application/octet-stream")) return false
             // octet-stream → fall through to filename heuristic below
