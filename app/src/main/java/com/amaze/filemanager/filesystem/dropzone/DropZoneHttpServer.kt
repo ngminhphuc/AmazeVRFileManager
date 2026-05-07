@@ -77,6 +77,26 @@ class DropZoneHttpServer(
         const val DEFAULT_PORT: Int = 8080
         private const val MAX_REQUEST_HEADERS_BYTES: Int = 16 * 1024
         private val LOG = LoggerFactory.getLogger(DropZoneHttpServer::class.java)
+
+        // Rewrites the form's action attribute on submit so the PIN
+        // travels in the URL (`/upload?pin=...`) — i.e. it reaches the
+        // server BEFORE any multipart parts are parsed. The PIN field
+        // is also still posted as a form part for transparency / older
+        // browsers, but the server treats the URL form as authoritative.
+        private const val PIN_FIRST_JS = """
+<script>
+(function(){
+  var form=document.getElementById('dropzone-form');
+  if(!form)return;
+  form.addEventListener('submit',function(){
+    var pin=document.getElementById('dropzone-pin');
+    if(pin&&pin.value){
+      form.action='/upload?pin='+encodeURIComponent(pin.value);
+    }
+  });
+})();
+</script>
+"""
     }
 
     @Volatile private var serverSocket: ServerSocket? = null
@@ -139,7 +159,7 @@ class DropZoneHttpServer(
             method == "GET" && (path == "/" || path == "/index.html") ->
                 writeResponse(output, 200, "OK", "text/html; charset=utf-8", landingHtml())
             method == "POST" && path.startsWith("/upload") ->
-                handleUpload(input, output, headers)
+                handleUpload(input, output, headers, path)
             else ->
                 writeResponse(output, 404, "Not Found", "text/plain", "Not found: $path")
         }
@@ -180,6 +200,7 @@ class DropZoneHttpServer(
         input: PushbackInputStream,
         output: OutputStream,
         headers: Map<String, String>,
+        path: String,
     ) {
         val contentType = headers["content-type"]
         val contentLength =
@@ -210,11 +231,35 @@ class DropZoneHttpServer(
                     )
                     return
                 }
+        // PIN can arrive in three places, in order of checking:
+        //   1. `X-Drop-PIN` header (preferred for API clients).
+        //   2. `?pin=` query parameter on /upload (the landing page form's
+        //      action is rewritten to include this so PIN auth is decided
+        //      from the URL before any part is parsed — this is what
+        //      protects against multipart-ordering races).
+        //   3. `pin` form field — accepted only as a last resort, because
+        //      a `<form>` posts parts in DOM order. If a phone hits the
+        //      raw form (PIN field present but `?pin=` missing), file
+        //      parts arrive before the PIN field; we now keep those
+        //      bytes in a tempfile until we see the PIN, and either
+        //      promote them to a real file or delete them on mismatch.
         val headerPin = headers["x-drop-pin"]
-        var pinOk = pin.isEmpty() || (headerPin != null && headerPin == pin)
+        val queryPin = extractQueryParam(path, "pin")
+        var pinOk =
+            pin.isEmpty() ||
+                (headerPin != null && headerPin == pin) ||
+                (queryPin != null && queryPin == pin)
 
+        // Files arriving before PIN validation are streamed to a tempfile
+        // first; once the PIN field is parsed and matches, we move (or
+        // copy) them into [downloadDir] under a unique name. On PIN
+        // mismatch the tempfiles are deleted. This protects against the
+        // ordering race where a `<form>` posts parts in DOM order and
+        // the user-typed PIN field can arrive after the file parts.
         val parser = MultipartParser(input, contentLength, boundary)
         val saved = mutableListOf<Pair<File, Long>>()
+        val staged = mutableListOf<Pair<File, String>>()
+        val tempDir = File(downloadDir, ".staging").apply { mkdirs() }
         try {
             while (parser.nextPart()) {
                 val name = parser.fieldName ?: continue
@@ -228,7 +273,9 @@ class DropZoneHttpServer(
                     continue
                 }
                 if (!pinOk) {
-                    parser.discardPart()
+                    val temp = File.createTempFile("drop-", ".part", tempDir)
+                    parser.writePartTo(temp)
+                    staged += temp to parser.filename!!
                     continue
                 }
                 val target = uniqueTarget(downloadDir, parser.filename!!)
@@ -238,14 +285,27 @@ class DropZoneHttpServer(
                 listener?.onUploadComplete(target, written)
             }
         } catch (e: IOException) {
+            staged.forEach { (f, _) -> f.runCatching { delete() } }
             listener?.onUploadFailed(parser.filename, e.message ?: "I/O error")
             writeResponse(output, 400, "Bad Request", "text/plain", "Upload failed: ${e.message}")
             return
         }
         if (!pinOk) {
+            staged.forEach { (f, _) -> f.runCatching { delete() } }
             writeResponse(output, 401, "Unauthorized", "text/plain", "PIN required")
             return
         }
+        for ((temp, originalName) in staged) {
+            val target = uniqueTarget(downloadDir, originalName)
+            if (!temp.renameTo(target)) {
+                temp.copyTo(target, overwrite = false)
+                temp.delete()
+            }
+            saved += target to target.length()
+            uploadCounter.incrementAndGet()
+            listener?.onUploadComplete(target, target.length())
+        }
+        tempDir.runCatching { if (listFiles().isNullOrEmpty()) delete() }
         val body =
             buildString {
                 append("Received ${saved.size} file(s):\n")
@@ -254,6 +314,23 @@ class DropZoneHttpServer(
                 }
             }
         writeResponse(output, 200, "OK", "text/plain; charset=utf-8", body)
+    }
+
+    private fun extractQueryParam(
+        path: String?,
+        key: String,
+    ): String? {
+        if (path == null) return null
+        val q = path.indexOf('?')
+        if (q < 0) return null
+        for (pair in path.substring(q + 1).split('&')) {
+            val eq = pair.indexOf('=')
+            if (eq < 0) continue
+            if (pair.substring(0, eq) == key) {
+                return java.net.URLDecoder.decode(pair.substring(eq + 1), "UTF-8")
+            }
+        }
+        return null
     }
 
     private fun uniqueTarget(
@@ -309,12 +386,18 @@ button{margin-top:16px;width:100%;padding:14px;background:#1976d2;color:#fff;bor
 .note{margin-top:16px;color:#888;font-size:13px}
 </style></head><body>
 <h1>Amaze drop-zone</h1>
-<form action="/upload" method="post" enctype="multipart/form-data">
+<!-- PIN field comes BEFORE the file field on purpose: browsers post
+     multipart entries in DOM order. Combined with the JS below that
+     copies the PIN into the form's action URL on submit, this avoids
+     an ordering race where files would arrive (and be discarded) on
+     the server before the PIN field is parsed. -->
+<form id="dropzone-form" action="/upload" method="post" enctype="multipart/form-data">
+  ${if (pin.isNotEmpty()) "<input id=\"dropzone-pin\" type=\"text\" name=\"pin\" placeholder=\"PIN\" inputmode=\"numeric\" maxlength=\"6\" required>" else ""}
   <input type="file" name="file" multiple required>
-  ${if (pin.isNotEmpty()) "<input type=\"text\" name=\"pin\" placeholder=\"PIN\" inputmode=\"numeric\" maxlength=\"6\" required>" else ""}
   <button type="submit">Upload to Quest</button>
 </form>
 <p class="note">Files land in /sdcard/Download/AmazeDrop/.</p>
+${if (pin.isNotEmpty()) PIN_FIRST_JS else ""}
 </body></html>
 """
 }

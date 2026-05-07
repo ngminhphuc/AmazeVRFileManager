@@ -41,6 +41,7 @@ import java.io.IOException
 @OptIn(UnstableApi::class)
 class SmbDataSource : BaseDataSource(true) {
     private var uri: Uri? = null
+    private var smbFile: SmbFile? = null
     private var raf: SmbRandomAccessFile? = null
     private var bytesRemaining: Long = 0L
     private var opened: Boolean = false
@@ -52,31 +53,33 @@ class SmbDataSource : BaseDataSource(true) {
         this.uri = u
         val smbUrl = u.toString()
         val ctx = CifsContexts.create(smbUrl, null)
-        // Scope the SmbFile so we always release its tree connection handle. The
-        // underlying SMB session used by SmbRandomAccessFile is held independently
-        // by the jcifs tree cache, so closing this local handle is safe.
-        SmbFile(smbUrl, ctx).use { smbFile ->
-            val length = smbFile.length()
-            val randomAccessFile = SmbRandomAccessFile(smbFile, "r")
+        // Keep the SmbFile alive for the lifetime of this data source.
+        // jcifs-ng's SmbRandomAccessFile delegates I/O through the SmbFile
+        // it was constructed with (this.file.read(...)), so closing the
+        // SmbFile while raf is still in use causes subsequent reads to
+        // fail. We close both in close() below in the right order.
+        val file = SmbFile(smbUrl, ctx)
+        this.smbFile = file
+        try {
+            val length = file.length()
+            val randomAccessFile = SmbRandomAccessFile(file, "r")
             // Assign immediately so close() will clean up if seek() below throws.
             this.raf = randomAccessFile
-            try {
-                if (dataSpec.position > 0) {
-                    randomAccessFile.seek(dataSpec.position)
-                }
-                bytesRemaining =
-                    if (dataSpec.length == C.LENGTH_UNSET.toLong()) {
-                        length - dataSpec.position
-                    } else {
-                        dataSpec.length
-                    }
-                if (bytesRemaining < 0) {
-                    throw IOException("Invalid SMB data spec: negative remaining length")
-                }
-            } catch (e: Exception) {
-                close()
-                throw if (e is IOException) e else IOException(e)
+            if (dataSpec.position > 0) {
+                randomAccessFile.seek(dataSpec.position)
             }
+            bytesRemaining =
+                if (dataSpec.length == C.LENGTH_UNSET.toLong()) {
+                    length - dataSpec.position
+                } else {
+                    dataSpec.length
+                }
+            if (bytesRemaining < 0) {
+                throw IOException("Invalid SMB data spec: negative remaining length")
+            }
+        } catch (e: Exception) {
+            close()
+            throw if (e is IOException) e else IOException(e)
         }
         opened = true
         transferStarted(dataSpec)
@@ -109,15 +112,22 @@ class SmbDataSource : BaseDataSource(true) {
 
     @Throws(IOException::class)
     override fun close() {
+        // Close raf first so any pending I/O completes against a still-live
+        // SmbFile, then release the SmbFile handle itself.
         try {
             raf?.close()
-        } finally {
-            raf = null
-            uri = null
-            if (opened) {
-                opened = false
-                transferEnded()
-            }
+        } catch (_: Exception) {
+        }
+        try {
+            smbFile?.close()
+        } catch (_: Exception) {
+        }
+        raf = null
+        smbFile = null
+        uri = null
+        if (opened) {
+            opened = false
+            transferEnded()
         }
     }
 }
