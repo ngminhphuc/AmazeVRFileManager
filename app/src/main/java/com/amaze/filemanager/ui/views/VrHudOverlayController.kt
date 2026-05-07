@@ -27,6 +27,7 @@ import android.view.View
 import androidx.preference.PreferenceManager
 import com.afollestad.materialdialogs.MaterialDialog
 import com.amaze.filemanager.R
+import com.amaze.filemanager.ui.activities.DropZoneActivity
 import com.amaze.filemanager.ui.activities.MainActivity
 import com.amaze.filemanager.ui.activities.MediaServersActivity
 import com.amaze.filemanager.ui.activities.SmbServersActivity
@@ -190,13 +191,15 @@ class VrHudOverlayController(private val activity: MainActivity) {
                 activity.getString(R.string.vr_hud_servers_smb),
                 activity.getString(R.string.vr_hud_servers_webdav),
                 activity.getString(R.string.vr_hud_servers_media),
+                activity.getString(R.string.drop_zone_menu),
             )
             .itemsCallback { _, _, which, _ ->
                 val target =
                     when (which) {
                         0 -> SmbServersActivity::class.java
                         1 -> WebDavServersActivity::class.java
-                        else -> MediaServersActivity::class.java
+                        2 -> MediaServersActivity::class.java
+                        else -> DropZoneActivity::class.java
                     }
                 activity.startActivity(Intent(activity, target))
             }

@@ -289,6 +289,15 @@
             android:configChanges="uiMode"
             android:screenOrientation="sensorLandscape" />
 
+        <!-- Sprint 14: cross-device drop-zone (HTTP file upload from phone). -->
+        <activity
+            android:exported="false"
+            android:label="@string/drop_zone_title"
+            android:name=".ui.activities.DropZoneActivity"
+            android:theme="@style/appCompatBlack"
+            android:configChanges="uiMode"
+            android:screenOrientation="sensorLandscape" />
+
         <activity
             android:exported="true"
             android:label="@string/databasereader"

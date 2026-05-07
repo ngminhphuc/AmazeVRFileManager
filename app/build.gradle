@@ -215,6 +215,10 @@ dependencies {
     implementation libs.commons.net
     //OkHttp
     implementation libs.okhttp
+    // Sprint 14: QR rendering for cross-device drop-zone landing URL.
+    // zxing:core is a pure-Java library (no Android deps); we render the
+    // BitMatrix to a Bitmap manually instead of pulling zxing-android.
+    implementation libs.zxing.core
 
     implementation libs.bcpkix.jdk18on
     implementation libs.bcprov.jdk18on

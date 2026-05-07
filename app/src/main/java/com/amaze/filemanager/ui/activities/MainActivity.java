@@ -1282,6 +1282,12 @@ public class MainActivity extends PermissionsActivity
       return true;
     }
 
+    // Sprint 14 — cross-device drop-zone (phone → Quest file upload).
+    if (item.getItemId() == R.id.drop_zone) {
+      startActivity(new Intent(this, DropZoneActivity.class));
+      return true;
+    }
+
     // Sprint 13 — VR HUD overlay quick toggle.
     if (item.getItemId() == R.id.vr_hud_toggle) {
       if (vrHudOverlay != null) vrHudOverlay.toggle();

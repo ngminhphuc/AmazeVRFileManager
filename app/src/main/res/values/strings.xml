@@ -959,6 +959,20 @@ You only need to do this once, until the next time you select a new location for
     <string name="vr_hud_servers_smb">SMB servers</string>
     <string name="vr_hud_servers_webdav">WebDAV servers</string>
     <string name="vr_hud_servers_media">Media servers (Jellyfin / Emby / Plex)</string>
+    <!-- Sprint 14 (cross-device drop-zone) -->
+    <string name="drop_zone_title">Drop-zone (phone → Quest)</string>
+    <string name="drop_zone_menu">Drop-zone</string>
+    <string name="drop_zone_start">Start drop-zone</string>
+    <string name="drop_zone_stop">Stop drop-zone</string>
+    <string name="drop_zone_status_running">Drop-zone running. On your phone, scan the QR or open the URL below.</string>
+    <string name="drop_zone_status_stopped">Drop-zone stopped.</string>
+    <string name="drop_zone_status_no_wifi">Not connected to Wi-Fi. Connect to the same network as your phone.</string>
+    <string name="drop_zone_status_failed">Drop-zone failed to start: %1$s</string>
+    <string name="drop_zone_pin_label">PIN: %1$s</string>
+    <string name="drop_zone_count_format">%1$d file(s) received → %2$s</string>
+    <string name="drop_zone_received">Received %1$s</string>
+    <string name="drop_zone_qr_desc">QR code with the drop-zone URL</string>
+    <string name="drop_zone_help">Files are saved to /sdcard/Download/AmazeDrop/. The PIN rotates each time the drop-zone starts. Stops automatically when this screen is closed.</string>
     <string name="view_options_layout_list">List view</string>
     <string name="view_options_layout_grid">Grid view</string>
     <string name="view_options_grid_columns">Grid columns</string>
