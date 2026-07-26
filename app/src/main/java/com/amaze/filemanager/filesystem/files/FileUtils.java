@@ -676,13 +676,18 @@ public class FileUtils {
       intent.setType(MimeTypes.getMimeType(f.getPath(), false));
       intent.putExtra("path", f.getPath());
       mainActivity.startActivity(intent);
-    } else if (defaultHandler && isVideoFile(f.getPath())) {
+      // The inline VR viewers below are launched unconditionally (not gated on
+      // isSelfDefault): on Quest 3 a system video/gallery app is usually the
+      // default handler, which would otherwise divert every tap to the intent
+      // chooser and make the inline players unreachable. "Open with" via
+      // long-press still offers external apps.
+    } else if (isVideoFile(f.getPath())) {
       launchVrVideoPlayer(mainActivity, f);
-    } else if (defaultHandler && is3DModelFile(f.getPath())) {
+    } else if (is3DModelFile(f.getPath())) {
       launchModel3DViewer(mainActivity, f);
-    } else if (defaultHandler && isPanoramaImageFile(f)) {
+    } else if (isPanoramaImageFile(f)) {
       launchPanoramaViewer(mainActivity, f);
-    } else if (defaultHandler && isPointCloudFile(f.getPath())) {
+    } else if (isPointCloudFile(f.getPath())) {
       launchPointCloudViewer(mainActivity, f);
     } else {
       try {
